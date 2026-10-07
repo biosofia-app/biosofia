@@ -400,6 +400,37 @@ table.nt .low, .rubbtn.low, .calcell.low, .rubnota.low{color:var(--bad)}
 .cebar .bar > span{display:block; height:100%; background:var(--accent); border-radius:4px}
 @media (max-width:640px){ .rubrow{grid-template-columns:1fr} .rublv,.rubdesc{grid-template-columns:repeat(2,minmax(0,1fr))} .cebar{grid-template-columns:1fr auto} .cebar .bar{grid-column:1 / -1; grid-row:2} }
 @media (prefers-reduced-motion: no-preference){ .modal{animation:pop .14s ease-out} @keyframes pop{from{transform:scale(.97); opacity:.6}} }
+/* ---- móvil (iPhone y Android): barra inferior, hojas y campos sin zoom ---- */
+button, a, input, select, textarea, label{touch-action:manipulation}
+.tabbar{display:none}
+.sheetlist{display:flex; flex-direction:column; margin-top:10px}
+.sheetlist button{display:flex; align-items:center; gap:14px; border:0; border-top:1px solid var(--line); background:none; padding:14px 6px; font-weight:700; font-size:1rem; color:var(--ink); cursor:pointer; text-align:left}
+.sheetlist button:first-child{border-top:0}
+.sheetlist button span{font-size:1.25rem; width:28px; text-align:center}
+@media (max-width:760px){
+  .nav{display:none}
+  .topbar-in{flex-wrap:nowrap; padding-block:6px; min-height:48px}
+  .brand{flex:1}
+  .savestate{max-width:132px; overflow:hidden; text-overflow:ellipsis; font-size:.72rem}
+  .mhide{display:none}
+  .tabbar{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); position:fixed; left:0; right:0; bottom:0; z-index:45; background:var(--surface); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom,0px)}
+  .tabbar button{border:0; background:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 2px 6px; min-height:54px; font-size:.68rem; font-weight:700; color:var(--muted); cursor:pointer}
+  .tabbar button svg{width:23px; height:23px}
+  .tabbar button[aria-current="page"]{color:var(--accent)}
+  .tabbar .tb-add{color:var(--accent)}
+  .tabbar .tb-add .ic{display:grid; place-items:center; width:44px; height:30px; border-radius:15px; background:var(--accent); color:var(--accent-ink)}
+  .tabbar .tb-add .ic svg{width:20px; height:20px}
+  main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(74px + env(safe-area-inset-bottom,0px)); max-width:calc(100% - 32px); text-align:center}
+  #nube-barra{bottom:calc(72px + env(safe-area-inset-bottom,0px))!important}
+  input[type=text], input[type=date], input[type=time], input[type=number], input[type=url], input[type=search], input:not([type]), select, textarea{font-size:16px}
+  .modal-bg{align-items:flex-end; padding:0}
+  .modal, .modal.wide{max-width:none; width:100%; border-radius:16px 16px 0 0; max-height:92vh; max-height:92dvh; padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:1.38rem}
+  .page-head{margin-bottom:12px}
+}
+@media (max-width:760px) and (prefers-reduced-motion: no-preference){ .modal{animation:sube .18s ease-out} @keyframes sube{from{transform:translateY(24px); opacity:.6}} }
+@media (display-mode: standalone){ .topbar{padding-top:env(safe-area-inset-top,0px)} }
 </style>
 
 </head><body>
@@ -410,7 +441,9 @@ table.nt .low, .rubbtn.low, .calcell.low, .rubnota.low{color:var(--bad)}
   <div id="nube-cuenta"></div>
 </div></header>
 <div class="banner" id="banner" hidden></div>
+<div class="banner" id="ios-inst" hidden></div>
 <main id="main"><div class="panel"><h2>Abriendo tu cuaderno…</h2><p class="muted">Cargando tus grupos, sesiones y agenda.</p></div></main>
+<nav class="tabbar" id="tabbar" aria-label="Módulos"></nav>
 <div id="modal"></div>
 <input type="file" id="filein" accept=".json,application/json" hidden>
 <input type="file" id="libimg" accept="image/*" hidden>
@@ -2113,11 +2146,25 @@ function alertas(s) {
   return out;
 }
 
+/* ---------- móvil: barra inferior, «＋» y «Más» ---------- */
+const ICO = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const TABS = [['hoy', 'Hoy', ICO('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>')],
+  ['plan', 'Planificar', ICO('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>')],
+  ['+', 'Apuntar', ICO('<path d="M12 5v14M5 12h14"/>')],
+  ['agenda', 'Agenda', ICO('<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>')],
+  ['mas', 'Más', ICO('<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>')]];
+const TAB_MAS = [['grupos', 'Grupos', '👥'], ['cal', 'Calificaciones', '📊'], ['ideas', 'Ideas', '💡'], ['materiales', 'Materiales', '📚'], ['ajustes', 'Ajustes', '⚙️']];
+const esMovil = () => window.matchMedia('(max-width: 760px)').matches;
+
 /* ---------- render ---------- */
 const NAV = [['hoy', 'Hoy'], ['plan', 'Planificación'], ['grupos', 'Grupos'], ['cal', 'Calificaciones'], ['agenda', 'Agenda'], ['ideas', 'Ideas'], ['materiales', 'Materiales'], ['ajustes', 'Ajustes']];
 function render() {
   const navView = UI.view === 'sesion' ? 'plan' : UI.view === 'grupo' ? 'grupos' : UI.view === 'libro' ? 'materiales' : UI.view;
   $('#nav').innerHTML = NAV.map(([v, t]) => `<button data-a="go" data-v="${v}" ${navView === v ? 'aria-current="page"' : ''}>${t}</button>`).join('');
+  const enMas = TAB_MAS.some(([v]) => v === navView);
+  $('#tabbar').innerHTML = TABS.map(([v, t, ic]) => v === '+' ? `<button class="tb-add" data-a="tbadd" aria-label="Apuntar algo rápido"><span class="ic">${ic}</span>${t}</button>`
+    : v === 'mas' ? `<button data-a="tbmas" ${enMas ? 'aria-current="page"' : ''}>${ic}${t}</button>`
+    : `<button data-a="go" data-v="${v}" ${navView === v ? 'aria-current="page"' : ''}>${ic}${t}</button>`).join('');
   const fn = VIEWS[UI.view] || VIEWS.hoy;
   const y = window.scrollY;
   $('#main').innerHTML = fn();
@@ -2360,7 +2407,7 @@ VIEWS.sesion = () => {
   else if (t === 'directo') body = tabDirecto(key, g, f, fecha);
   else if (t === 'sitios') body = tabSitios(g);
   else body = tabCierre(key, g);
-  return `<div class="page-head"><div><div class="row small"><a href="#" data-a="go" data-v="plan">‹ Planificación</a>${prev ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(prev.key)}" data-tab="${UI.sesTab}">‹ Anterior: ${esc(prev.grupo.nombre)} (${prev.fecha === fecha ? '' : fShort(prev.fecha) + ' '}${esc(prev.franja.inicio)})</a>` : ''}${next ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(next.key)}" data-tab="${UI.sesTab}">Siguiente: ${esc(next.grupo.nombre)} (${next.fecha === fecha ? '' : fShort(next.fecha) + ' '}${esc(next.franja.inicio)}) ›</a>` : ''}</div>
+  return `<div class="page-head"><div><div class="row small"><a href="#" data-a="go" data-v="plan">‹ Planificación</a>${prev ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(prev.key)}" data-tab="${UI.sesTab}">‹ Anterior<span class="mhide">: ${esc(prev.grupo.nombre)} (${prev.fecha === fecha ? '' : fShort(prev.fecha) + ' '}${esc(prev.franja.inicio)})</span></a>` : ''}${next ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(next.key)}" data-tab="${UI.sesTab}">Siguiente<span class="mhide">: ${esc(next.grupo.nombre)} (${next.fecha === fecha ? '' : fShort(next.fecha) + ' '}${esc(next.franja.inicio)})</span> ›</a>` : ''}</div>
     <h1 style="margin-top:6px">${gchip(g)} <span class="muted" style="font-weight:500">· ${esc(p?.titulo || 'Sin planificar')}</span></h1>
     <div class="sub">${cap(fLong(fecha))} · ${esc(f.inicio)}–${esc(f.fin)}${h?.aula ? ' · Aula ' + esc(h.aula) : ''}${ns ? ` · Sesión ${ns.n} de ${ns.total}` : ''}${p?.unidad ? ' · ' + esc(p.unidad) : ''}</div></div>
     <div class="row">${!p?.sinClase && libroSesion(key)?.b ? `<button class="btn sm primary" data-a="seslibpres">📖 Libro</button>` : ''}${p?.sinClase ? '' : `<button class="btn sm" data-a="desplazar">Desplazar desde aquí</button>`}</div></div>
@@ -3140,6 +3187,20 @@ function proyectar() {
 
 /* ---------- acciones (clic) ---------- */
 const A = {
+  tbmas() { modal(`<div class="row between"><h2 style="margin:0">Más</h2><button class="iconbtn" data-a="close" aria-label="Cerrar">✕</button></div>
+      <div class="sheetlist">${TAB_MAS.map(([v, t, e]) => `<button data-a="tbgo" data-v="${v}"><span aria-hidden="true">${e}</span>${t}</button>`).join('')}</div>`); },
+  tbgo(el) { closeModal(); A.go(el); },
+  tbadd() { const hoy = todayStr(); const man = addDays(hoy, 1);
+    modal(`<div class="row between"><h2 style="margin:0">Apuntar</h2><button class="iconbtn" data-a="close" aria-label="Cerrar">✕</button></div>
+      <div class="stack" style="margin-top:12px"><label class="f">Idea para clase<textarea id="qi-x" rows="3" placeholder="Una actividad, una noticia, un dato curioso…"></textarea></label>
+        <div class="row"><input type="text" id="qi-e" placeholder="Etiquetas (p. ej. volcanes, agua)" style="flex:1;min-width:0"><button class="btn primary" data-a="qidea">Guardar idea</button></div>
+        <hr style="margin:4px 0"><div class="label">En la agenda</div>
+        <div class="row"><button class="btn" data-a="agday" data-d="${hoy}">Para hoy</button><button class="btn" data-a="agday" data-d="${man}">Para mañana</button><button class="btn" data-a="tbgo" data-v="agenda">Otro día…</button></div></div>`);
+    setTimeout(() => $('#qi-x')?.focus(), 50); },
+  qidea() { const x = $('#qi-x').value.trim(); if (!x) { $('#qi-x').focus(); return; }
+    const [t, ...rest] = x.split('\n'); S.ideas.push({ id: uid(), creada: new Date().toISOString(), usos: [], titulo: rest.length ? t.trim() : '', texto: rest.length ? rest.join('\n').trim() : x, apartado: '', url: (x.match(/https?:\/\/\S+/) || [''])[0], tipo: '',
+      etiquetas: $('#qi-e').value.split(',').map(s => s.trim()).filter(Boolean), ambito: 'todos', grupoId: null, nivel: null });
+    touch('ideas'); closeModal(); toast('Idea guardada (está en Ideas › Sin clasificar)'); UI.keepScroll = true; render(); },
   go(el) { UI.view = el.dataset.v; if (el.dataset.g) { UI.grupoId = el.dataset.g; UI.grupoTab = el.dataset.gt || 'alumnado'; } UI.confirm = null; UI.editIdea = null; render(); window.scrollTo(0, 0); },
   dia(el) { const d = +el.dataset.d; UI.date = d === 0 ? todayStr() : addDays(UI.date, d); if (d) { let g = 0; while (dow(UI.date) > 5 && g++ < 3) UI.date = addDays(UI.date, d); } render(); },
   pmode(el) { UI.planMode = el.dataset.v; render(); },
@@ -5048,6 +5109,15 @@ document.addEventListener('focusout', () => { if (UI.remotoPend) setTimeout(() =
 function escucharCambios() {
   Nube.alCambiar = (id, data) => { if (aplicarDoc(id, data)) refrescarRemoto(); };
 }
+function avisoInstalarIOS() {
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const inst = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  let visto = false; try { visto = localStorage.getItem('bs:ios-inst') === '1'; } catch (e) {}
+  if (!ios || inst || visto) return;
+  const b = $('#ios-inst'); b.hidden = false;
+  b.innerHTML = `<div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="grow">Para usarla como una app: pulsa <b>Compartir</b> <span aria-hidden="true">⬆︎</span> y luego <b>Añadir a pantalla de inicio</b>. Así se abre a pantalla completa y Safari no borra la copia del dispositivo.</span><button class="iconbtn" aria-label="Cerrar aviso" id="ios-inst-x">✕</button></div>`;
+  $('#ios-inst-x').onclick = () => { b.hidden = true; try { localStorage.setItem('bs:ios-inst', '1'); } catch (e) {} };
+}
 (async function start() {
   render.loading = true;
   Nube.alEstado = (t, err) => setSaveState(t, err);
@@ -5056,7 +5126,8 @@ function escucharCambios() {
   try { hydrate(await Store.loadAll()); try { (S.agenda || []).forEach(vincularExamenAgenda); } catch (e) {} } catch (e) { showBanner('No se han podido cargar tus datos. Recarga la página; si sigue igual, importa tu última copia.'); }
   if (Store.mode === 'local') showBanner('Estás usando la app sin cuenta: los datos se guardan solo en este navegador. Exporta copias desde Ajustes o entra con tu cuenta desde el botón ⌂ de arriba.');
   Nube.refrescarEstado();
-  render();
+  if (esMovil() && UI.planMode === 'semana') UI.planMode = 'dia';
+  render(); avisoInstalarIOS();
   try { escucharCambios(); } catch (e) {}
   setInterval(() => { if (UI.view === 'sesion' && UI.sesTab === 'directo' && !$('#modal').innerHTML && !document.activeElement?.matches('input,textarea')) { UI.keepScroll = true; render(); } }, 60000);
 })();
