@@ -8,7 +8,7 @@ window.BIOSOFIA_CONFIG = {
 
   /* Google Cloud Console → APIs y servicios → Credenciales →
      ID de cliente de OAuth (tipo «Aplicación web»). Termina en .apps.googleusercontent.com */
-  googleClientId: '',
+  googleClientId: '533837365192-fan7t2amu5qbsbusbqbpo2upal1q1i7q.apps.googleusercontent.com',
 
   /* Microsoft Entra (portal.azure.com) → Registros de aplicaciones →
      Id. de aplicación (cliente). Plataforma «Aplicación de página única (SPA)». */
