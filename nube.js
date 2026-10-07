@@ -125,7 +125,33 @@
       const u = await (await api('https://www.googleapis.com/oauth2/v3/userinfo')).json();
       return { prov: 'google', sub: u.sub, email: u.email || '', nombre: u.name || u.email || 'Google' };
     },
-    async reconectar() { await this.guardar(await this.pedirToken(false, Auth.sesion?.email)); }
+    async reconectar() { await this.guardar(await this.pedirToken(false, Auth.sesion?.email)); },
+
+    /* Renovación automática: Google da permisos de 1 hora y solo deja pedir otro desde un toque del usuario
+       (si no, el navegador bloquea la ventana). Se prepara el cliente de antemano y, en el primer toque
+       después de que caduque (o 5 minutos antes), se pide uno nuevo: la ventanita de Google aparece un
+       instante y se cierra sola. */
+    auto: null, ocupado: false, ultimoIntento: 0,
+    async prepararAuto() {
+      try { await this.cargar(); } catch (e) { return; }
+      this.auto = google.accounts.oauth2.initTokenClient({
+        client_id: CFG.googleClientId, scope: this.scope, prompt: '', login_hint: Auth.sesion?.email || undefined,
+        callback: async r => {
+          this.ocupado = false;
+          if (r.error) { Auth.pedirReconexion(); return; }
+          try { await this.guardar(r); Auth.reconectar = false; UI.barra(); Sync.programar(200); } catch (e) { Auth.pedirReconexion(); }
+        },
+        error_callback: () => { this.ocupado = false; Auth.pedirReconexion(); }
+      });
+    },
+    necesita() { return !(Auth.tok?.access && Auth.tok.exp - 5 * 60000 > now()); },
+    renovarEnToque() {
+      if (!this.auto || this.ocupado || !navigator.onLine || !this.necesita()) return false;
+      if (now() - this.ultimoIntento < 20000) return false;
+      this.ocupado = true; this.ultimoIntento = now();
+      try { this.auto.requestAccessToken(); } catch (e) { this.ocupado = false; return false; }
+      return true;
+    }
   };
 
   /* ---------------- Microsoft (PKCE) ---------------- */
@@ -486,8 +512,8 @@
       this.estilo(); let el = document.getElementById('nube-barra');
       if (!Auth.reconectar) { el?.remove(); return; }
       if (!el) { el = document.createElement('div'); el.id = 'nube-barra'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
-      el.innerHTML = `<span>La conexión con ${Auth.sesion?.prov === 'google' ? 'Google Drive' : 'OneDrive'} ha caducado. Tus cambios se guardan en este dispositivo.</span><button>Reconectar</button>`;
-      el.querySelector('button').onclick = () => UI.reconectar();
+      el.innerHTML = `<span>La conexión con ${Auth.sesion?.prov === 'google' ? 'Google Drive' : 'OneDrive'} ha caducado. Tus cambios se guardan en este dispositivo${Auth.sesion?.prov === 'google' ? ' y se reconecta al tocar cualquier sitio' : ''}.</span><button>Reconectar</button>`;
+      el.querySelector('button').onclick = () => { if (Auth.sesion?.prov === 'google' && (G.ocupado || now() - G.ultimoIntento < 3000)) return; UI.reconectar(); };
     },
     async reconectar() {
       try { if (Auth.sesion.prov === 'google') await G.reconectar(); else await MS.reconectar(); Auth.reconectar = false; this.barra(); Sync.ciclo(); }
@@ -528,7 +554,7 @@
       if (Sync.drv) await Sync.drv.borrar(id);
     }
   };
-  const MIME = { pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', json: 'application/json', txt: 'text/plain', csv: 'text/csv' };
+  const MIME = { pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', json: 'application/json', txt: 'text/plain', csv: 'text/csv', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
   const descargas = {
     async save({ filename, data }) {
       const ext = (filename.split('.').pop() || '').toLowerCase();
@@ -580,6 +606,11 @@
         // Microsoft: si la renovación ha caducado, se intenta entrar sin preguntar una vez por sesión del navegador
         if (Auth.sesion.prov === 'ms' && !(Auth.tok?.exp > now()) && navigator.onLine) {
           try { await MS.refrescar(); } catch (e) { if (e.code !== 'offline' && !sessionStorage.getItem('bs:silencioso')) { sessionStorage.setItem('bs:silencioso', '1'); await MS.entrar({ silencioso: true, hint: Auth.sesion.email }); } }
+        }
+        if (Auth.sesion.prov === 'google') {
+          G.prepararAuto();
+          document.addEventListener('click', () => { if (Auth.sesion?.prov === 'google') G.renovarEnToque(); }, true);
+          document.addEventListener('keydown', e => { if (e.key === 'Enter' && Auth.sesion?.prov === 'google') G.renovarEnToque(); }, true);
         }
         Sync.ultimo = await IDB.meta('ultimaSync') || null;
         if (!Sync.ultimo) {
