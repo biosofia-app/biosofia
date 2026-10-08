@@ -69,7 +69,35 @@
       this.pedirReconexion(); throw new NubeError('auth', 'Hay que volver a conectar la cuenta');
     },
     invalidar() { if (this.tok) { this.tok.exp = 0; lsSet(TOK_K, this.tok); } },
-    pedirReconexion() { if (!this.reconectar) { this.reconectar = true; UI.barra(); } }
+    pedirReconexion() { if (!this.reconectar) { this.reconectar = true; UI.barra(); Registro.add('caducado', 'El permiso de Google caducó y no se pudo renovar solo: se mostró «Reconectar»'); } }
+  };
+
+  /* ---------------- registro de inicios de sesión (para encontrar cierres de sesión inesperados) ----------------
+     Se guarda en el dispositivo (sobrevive a «Cerrar sesión») y una copia por dispositivo en la nube
+     («_registro_<dispositivo>»), para poder verlo desde cualquier sitio. */
+  const Registro = {
+    K: 'bs:registro', DK: 'bs:dispositivo', _t: null,
+    disp() { let d = lsGet(this.DK); const nuevo = !d; if (!d) { d = rnd(9).replace(/[^a-zA-Z0-9]/g, 'x'); lsSet(this.DK, d); } return { id: d, nuevo }; },
+    desc() {
+      const ua = navigator.userAgent;
+      const sis = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /CrOS|Linux/.test(ua) ? 'Linux' : 'Otro';
+      const nav = /EdgA?\/|EdgiOS/.test(ua) ? 'Edge' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'navegador';
+      const inst = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone;
+      return `${sis} · ${inst ? 'app instalada' : nav}`;
+    },
+    lista() { return lsGet(this.K) || []; },
+    add(tipo, texto, extra = {}) {
+      const L = this.lista(); L.push(Object.assign({ t: new Date().toISOString(), tipo, texto, cuenta: Auth.sesion?.email || '', disp: this.desc() }, extra));
+      while (L.length > 300) L.shift(); lsSet(this.K, L); this.subir();
+    },
+    subir() {
+      clearTimeout(this._t);
+      this._t = setTimeout(() => {
+        if (!Sync.drv || !Auth.sesion || Auth.sesion.prov === 'local') return;
+        const d = this.disp().id; const ev = this.lista().filter(e => !e.cuenta || e.cuenta === Auth.sesion.email).slice(-200);
+        Nube.guardar('_registro_' + d, { id: d, disp: this.desc(), eventos: ev }).catch(() => {});
+      }, 1500);
+    }
   };
 
   /* llamada a una API con el token y reintentos */
@@ -137,11 +165,12 @@
       this.auto = google.accounts.oauth2.initTokenClient({
         client_id: CFG.googleClientId, scope: this.scope, prompt: '', login_hint: Auth.sesion?.email || undefined,
         callback: async r => {
-          this.ocupado = false;
-          if (r.error) { Auth.pedirReconexion(); return; }
-          try { await this.guardar(r); Auth.reconectar = false; UI.barra(); Sync.programar(200); } catch (e) { Auth.pedirReconexion(); }
+          this.ocupado = false; const seg = Math.round((now() - this.ultimoIntento) / 100) / 10;
+          if (r.error) { Registro.add('renovar-fallo', 'No se pudo renovar el permiso de Google', { error: r.error, seg }); Auth.pedirReconexion(); return; }
+          try { await this.guardar(r); Auth.reconectar = false; UI.barra(); Sync.programar(200); Registro.add('renovar', 'Permiso de Google renovado al tocar la pantalla', { seg }); }
+          catch (e) { Registro.add('renovar-fallo', 'Permiso renovado sin acceso a Drive', { seg }); Auth.pedirReconexion(); }
         },
-        error_callback: () => { this.ocupado = false; Auth.pedirReconexion(); }
+        error_callback: e => { this.ocupado = false; Registro.add('renovar-fallo', 'Se cerró o bloqueó la ventana de Google al renovar', { error: e?.type || '', seg: Math.round((now() - this.ultimoIntento) / 100) / 10 }); Auth.pedirReconexion(); }
       });
     },
     necesita() { return !(Auth.tok?.access && Auth.tok.exp - 5 * 60000 > now()); },
@@ -324,7 +353,8 @@
     get() { return lsGet(this.k()) || {}; },
     set(p) { lsSet(this.k(), Object.assign(this.get(), p)); },
     corporativa(email) { const d = (email || '').split('@')[1]?.toLowerCase() || ''; return (CFG.dominiosCorporativos || []).some(x => d === x || d.endsWith('.' + x)); },
-    alumnadoLocal() { const p = this.get(); return p.alumnadoLocal ?? !this.corporativa(Auth.sesion?.email); }
+    alumnadoLocal() { const p = this.get(); return p.alumnadoLocal ?? !this.corporativa(Auth.sesion?.email); },
+    definida() { return this.get().alumnadoLocal !== undefined; }
   };
 
   /* ---------------- sincronización ---------------- */
@@ -341,7 +371,7 @@
       this.corre = (async () => {
         try {
           Estado.set('Sincronizando…');
-          await this.drv.preparar(); await this.bajar(); await this.subir();
+          await this.drv.preparar(); await this.bajar(); if (await this.prefsCuenta()) { this.cambioPrefs = true; await this.bajar(); } await this.subir();
           this.ultimo = now(); this.error = null; await IDB.setMeta('ultimaSync', this.ultimo); await Estado.ok();
         } catch (e) { this.error = e; Estado.fallo(e); }
       })();
@@ -358,6 +388,8 @@
         await IDB.setMeta('carpetas', null); await IDB.setMeta('odListo', null); this.drv.c = null; this.drv.listo = false; await this.drv.preparar(true);
         return;
       }
+      // la preferencia de la cuenta va primero: si otro dispositivo ha pasado a «solo en el dispositivo», aquí no se borra nada del alumnado
+      remotos.sort((a, b) => (b.name === '_prefs.json') - (a.name === '_prefs.json'));
       const vistos = new Set();
       for (const f of remotos) {
         const id = f.name.endsWith('.json') ? decId(f.name) : null;
@@ -369,9 +401,10 @@
         let data; try { data = await this.drv.leer(f.ref); } catch (e) { if (e.code === 'not_found') continue; if (e instanceof SyntaxError) { console.warn('Documento ilegible', f.name); continue; } throw e; }
         const cur = await IDB.get(id); if (cur && (cur.dirty || cur.deleted)) continue;
         await IDB.put({ id, data, ref: f.ref, rev: f.rev, dirty: false, ver: cur?.ver || 0 });
-        this.alCambiar?.(id, data);
+        if (id === '_prefs' && data?.alumnado === 'local' && !Prefs.alumnadoLocal()) { Prefs.set({ alumnadoLocal: true }); this.alPrefs?.(); }
+        else this.alCambiar?.(id, data);
       }
-      for (const r of sincronizados) if (!vistos.has(r.id)) { await IDB.del(r.id); this.alCambiar?.(r.id, null); }
+      for (const r of sincronizados) if (!vistos.has(r.id) && !this.soloAqui(r.id)) { await IDB.del(r.id); this.alCambiar?.(r.id, null); }
     },
     async subir() {
       for (const r of (await IDB.all()).filter(x => x.dirty || x.deleted)) {
@@ -387,8 +420,46 @@
         await IDB.put(cur);
       }
     },
-    async pendientes() { return (await IDB.all()).filter(r => (r.dirty || r.deleted) && !this.soloAqui(r.id)).length; }
+    async pendientes() { return (await IDB.all()).filter(r => (r.dirty || r.deleted) && !this.soloAqui(r.id)).length; },
+    /* la opción «datos del alumnado solo en el dispositivo» es de la cuenta (documento «_prefs» en la nube):
+       la primera vez se pregunta; después se aplica sola en todos los dispositivos. Devuelve true si hay que volver a bajar. */
+    async prefsCuenta() {
+      const rec = await IDB.get('_prefs'); const remoto = rec?.data?.alumnado;
+      if (remoto) {
+        if (rec.dirty) return false; // la acaba de cambiar este dispositivo: se sube en este ciclo
+        const quiereLocal = remoto === 'local';
+        if (Prefs.definida() && quiereLocal === Prefs.alumnadoLocal()) return false;
+        if (quiereLocal) { Prefs.set({ alumnadoLocal: true }); this.alPrefs?.(); return false; }
+        const ok = await activarNube({ remoto: true }); this.alPrefs?.(); return ok;
+      }
+      if (rec?.dirty) return false;
+      let local;
+      if (Prefs.definida()) local = Prefs.alumnadoLocal(); // dispositivos que ya lo tenían elegido (versión anterior)
+      else { UI.cargando(null); local = await UI.preguntaAlumnado(); }
+      await guardarPrefs(local);
+      if (!local && Prefs.alumnadoLocal()) { await activarNube({ remoto: false }); this.alPrefs?.(); return true; }
+      Prefs.set({ alumnadoLocal: local }); this.alPrefs?.(); return false;
+    }
   };
+
+  async function guardarPrefs(local) { const cur = (await IDB.get('_prefs'))?.data || {}; await Nube.guardar('_prefs', Object.assign({}, cur, { alumnado: local ? 'local' : 'nube', fecha: new Date().toISOString(), desde: Registro.desc() })); }
+  /* pasar los datos del alumnado de este dispositivo a la nube; pregunta qué copia vale si hay datos en los dos sitios */
+  async function activarNube({ remoto }) {
+    const recs = (await IDB.all()).filter(r => ALUMNADO.test(r.id));
+    let remotos = [];
+    try { await Sync.drv.preparar(); remotos = (await Sync.drv.listar()).filter(f => ALUMNADO.test(decId(f.name) || '')); } catch (e) { if (!remoto) { alert('Hace falta conexión para pasar los datos del alumnado a la nube.'); return false; } throw e; }
+    const enNube = new Set(remotos.map(f => decId(f.name)));
+    const choque = recs.some(r => !r.deleted && r.data && enNube.has(r.id));
+    const usarNube = choque && confirm((remoto ? 'Has activado la sincronización de los datos del alumnado desde otro dispositivo, y en este también hay datos del alumnado.\n\n' : 'En tu nube ya hay datos del alumnado guardados desde otro dispositivo.\n\n')
+      + 'Aceptar = usar los de la nube (se sustituyen los de este dispositivo)\nCancelar = usar los de este dispositivo (se sustituyen los de la nube)');
+    Prefs.set({ alumnadoLocal: false });
+    for (const r of recs) {
+      if (r.deleted) continue;
+      if (usarNube && enNube.has(r.id)) { r.dirty = false; r.rev = null; } else { r.dirty = true; r.ver = (r.ver || 0) + 1; }
+      await IDB.put(r);
+    }
+    return true;
+  }
 
   /* ---------------- estado visible ---------------- */
   const Estado = {
@@ -430,6 +501,8 @@
   .nc-menu .nc-q{font-weight:700;overflow-wrap:anywhere} .nc-menu .nc-s{font-size:.8rem;color:var(--muted)}
   .nc-menu button,.nc-menu a{text-align:left;border:0;background:none;padding:7px 8px;border-radius:7px;cursor:pointer;font-weight:700;font-size:.9rem;color:var(--ink);text-decoration:none}
   .nc-menu button:hover,.nc-menu a:hover{background:var(--surface-2)} .nc-menu .nc-sal{color:var(--bad)}
+  .nk-fondo{position:fixed;inset:0;z-index:110;background:rgba(10,20,22,.5);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+  .np-op{justify-content:flex-start;text-align:left;padding:12px 14px}
   #nube-barra{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--surface);border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:12px;max-width:calc(100% - 24px);box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:.9rem}
   #nube-barra button{border:0;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink);white-space:nowrap}
   `;
@@ -469,6 +542,21 @@
               : er.code === 'offline' ? 'No hay conexión a internet.' : (er.message || 'No se ha podido entrar.');
           }
         });
+      });
+    },
+    preguntaAlumnado() {
+      this.estilo();
+      return new Promise(resolve => {
+        const el = document.createElement('div'); el.id = 'nube-pregunta'; el.className = 'nk-fondo';
+        el.innerHTML = `<div class="ne-caja" role="dialog" aria-labelledby="np-t" style="max-width:460px">
+          <h2 id="np-t" style="margin:0;font-size:1.2rem">¿Dónde guardamos los datos del alumnado?</h2>
+          <p>Grupos y alumnado, registros de clase, calificaciones y materias pendientes. Lo demás (planificación, agenda, ideas, materiales) siempre se sincroniza.</p>
+          <button class="ne-btn np-op" data-v="nube"><span style="text-align:left;flex:1">🔄 <b>Sincronizarlos en todos mis dispositivos</b><br><span class="ne-nota" style="font-weight:400">Se guardan en tu ${esc(Sync.drv?.nube || 'nube')} y los ves igual en el ordenador y en el móvil.</span></span></button>
+          <button class="ne-btn np-op" data-v="local"><span style="text-align:left;flex:1">📱 <b>Solo en cada dispositivo</b><br><span class="ne-nota" style="font-weight:400">No salen del aparato donde los escribes y no se sincronizan. Conviene exportar copias de vez en cuando.</span></span></button>
+          <p class="ne-nota">Se aplica en todos los dispositivos donde entres con esta cuenta y puedes cambiarlo en <b>Ajustes › Tus datos</b>. Si tienes dudas sobre la protección de datos del alumnado, consúltalo en tu centro.</p>
+        </div>`;
+        document.body.appendChild(el);
+        el.querySelectorAll('.np-op').forEach(b => b.onclick = () => { el.remove(); resolve(b.dataset.v === 'local'); });
       });
     },
     cargando(t) {
@@ -516,8 +604,10 @@
       el.querySelector('button').onclick = () => { if (Auth.sesion?.prov === 'google' && (G.ocupado || now() - G.ultimoIntento < 3000)) return; UI.reconectar(); };
     },
     async reconectar() {
-      try { if (Auth.sesion.prov === 'google') await G.reconectar(); else await MS.reconectar(); Auth.reconectar = false; this.barra(); Sync.ciclo(); }
-      catch (e) { if (e.code !== 'cancelado') alert('No se ha podido reconectar: ' + (e.message || e.code)); }
+      const t0 = now();
+      try { if (Auth.sesion.prov === 'google') await G.reconectar(); else await MS.reconectar(); Auth.reconectar = false; this.barra(); Sync.ciclo();
+        Registro.add('reconectar', 'Reconexión con el botón «Reconectar»', { seg: Math.round((now() - t0) / 100) / 10 }); }
+      catch (e) { Registro.add('renovar-fallo', 'Falló la reconexión con el botón', { error: e.code || '' }); if (e.code !== 'cancelado') alert('No se ha podido reconectar: ' + (e.message || e.code)); }
     }
   };
 
@@ -592,12 +682,19 @@
       UI.estilo();
       const swP = prepararSW();
       let msg = '';
+      const disp = Registro.disp(); const ultimo = Registro.lista().slice(-1)[0];
+      const motivo = disp.nuevo ? 'primera vez en este dispositivo o navegador, o el sistema había borrado los datos de la app' : ultimo?.tipo === 'salir' ? 'después de cerrar sesión' : 'la app había perdido la sesión sin cerrarla';
       try {
         const v = await MS.volver();
         if (v?.silencioso) Auth.pedirReconexion();
-        else if (v) Auth.guardarSesion(v);
+        else if (v) { Auth.guardarSesion(v); Registro.add('entrar', 'Entrada con Microsoft', { motivo: sessionStorage.getItem('bs:motivo') || motivo }); }
       } catch (e) { msg = e.code === 'cancelado' ? 'Se ha cancelado el inicio de sesión con Microsoft.' : (e.message || 'No se ha podido entrar con Microsoft.'); Auth.guardarSesion(null); }
-      if (!Auth.sesion || msg) Auth.guardarSesion(await UI.entrada(msg));
+      if (!Auth.sesion || msg) {
+        sessionStorage.setItem('bs:motivo', motivo);
+        Auth.guardarSesion(await UI.entrada(msg));
+        if (Auth.sesion.prov === 'google') Registro.add('entrar', 'Entrada con Google', { motivo });
+        else if (Auth.sesion.prov === 'local') Registro.add('entrar', 'Entrada sin cuenta', { motivo });
+      } else Registro.add('abrir', 'App abierta con la sesión guardada', { permiso: Auth.tok?.exp > now() ? 'vigente' : 'caducado' });
       await swP;
       await IDB.abrir(nombreBase(Auth.sesion));
       if (Auth.sesion.prov !== 'local') {
@@ -612,10 +709,11 @@
           document.addEventListener('click', () => { if (Auth.sesion?.prov === 'google') G.renovarEnToque(); }, true);
           document.addEventListener('keydown', e => { if (e.key === 'Enter' && Auth.sesion?.prov === 'google') G.renovarEnToque(); }, true);
         }
+        Registro.subir();
         Sync.ultimo = await IDB.meta('ultimaSync') || null;
         if (!Sync.ultimo) {
           UI.cargando('Preparando tu carpeta en ' + Sync.drv.nube + '…');
-          await Sync.ciclo();
+          await Sync.ciclo(); if (Sync.cambioPrefs) { Sync.cambioPrefs = false; await Sync.ciclo(); }
           await traerLocal();
           UI.cargando(null);
           if (Sync.error && Sync.error.code !== 'offline') alert('No se ha podido conectar con ' + Sync.drv.nube + ': ' + (Sync.error.message || Sync.error.code) + '\nPuedes seguir trabajando: los cambios se guardan aquí y se subirán después.');
@@ -627,7 +725,15 @@
       } else Estado.set('Guardado en este dispositivo');
       UI.cuenta(); UI.barra();
     },
-    async cargarTodo() { const out = {}; (await IDB.all()).forEach(r => { if (!r.deleted && r.data != null) out[r.id] = r.data; }); return out; },
+    async cargarTodo() { const out = {}; (await IDB.all()).forEach(r => { if (!r.deleted && r.data != null && r.id[0] !== '_') out[r.id] = r.data; }); return out; },
+    set alPrefs(f) { Sync.alPrefs = f; },
+    /* registros de todos los dispositivos de la cuenta (los de la nube y el de este) */
+    async registro() {
+      const d = Registro.disp().id; const out = new Map();
+      if (Auth.sesion?.prov !== 'local') (await IDB.all()).filter(r => r.id.startsWith('_registro_') && r.data && !r.deleted).forEach(r => out.set(r.data.id, r.data));
+      out.set(d, { id: d, disp: Registro.desc(), eventos: Registro.lista().filter(e => !e.cuenta || !Auth.sesion?.email || e.cuenta === Auth.sesion.email) });
+      return [...out.values()].map(x => Object.assign({ este: x.id === d }, x));
+    },
     async guardar(id, data) {
       const r = (await IDB.get(id)) || { id, ver: 0, ref: null, rev: null };
       r.data = clon(data); r.dirty = true; r.deleted = false; r.ver = (r.ver || 0) + 1;
@@ -648,25 +754,16 @@
       if (v === Prefs.alumnadoLocal()) return;
       const recs = (await IDB.all()).filter(r => ALUMNADO.test(r.id));
       if (!v) {
-        // si en la nube ya hay datos del alumnado (de otro dispositivo), se pregunta cuáles se quedan
-        let remotos = [];
-        if (Sync.drv) { try { await Sync.drv.preparar(); remotos = (await Sync.drv.listar()).filter(f => ALUMNADO.test(decId(f.name) || '')); } catch (e) { alert('Hace falta conexión para pasar los datos del alumnado a la nube.'); return false; } }
-        const enNube = new Set(remotos.map(f => decId(f.name)));
-        const choque = recs.some(r => !r.deleted && r.data && enNube.has(r.id));
-        const usarNube = choque && confirm('En tu nube ya hay datos del alumnado guardados desde otro dispositivo.\n\nAceptar = usar los de la nube (se sustituyen los de este dispositivo)\nCancelar = usar los de este dispositivo (se sustituyen los de la nube)');
-        Prefs.set({ alumnadoLocal: false });
-        for (const r of recs) {
-          if (r.deleted) continue;
-          if (usarNube && enNube.has(r.id)) { r.dirty = false; r.rev = null; } else { r.dirty = true; r.ver = (r.ver || 0) + 1; }
-          await IDB.put(r);
-        }
-        await Sync.ciclo(); return true;
-      }
-      if (borrarDeLaNube && Sync.drv) {
-        try { await Sync.drv.preparar(); for (const r of recs) if (r.ref) { await Sync.drv.borrar(r.ref); r.ref = null; r.rev = null; await IDB.put(r); } }
-        catch (e) { alert('No se han podido borrar las copias de la nube: ' + (e.message || e.code) + '. Vuelve a intentarlo con conexión.'); return; }
+        if (!Sync.drv) return false;
+        if (!(await activarNube({ remoto: false }))) return false;
+        await guardarPrefs(false); await Sync.ciclo(); return true;
       }
       Prefs.set({ alumnadoLocal: true });
+      if (Sync.drv) { await guardarPrefs(true); await Sync.ciclo(); }
+      if (borrarDeLaNube && Sync.drv) {
+        try { await Sync.drv.preparar(); for (const r of recs) if (r.ref) { await Sync.drv.borrar(r.ref); r.ref = null; r.rev = null; await IDB.put(r); } }
+        catch (e) { alert('No se han podido borrar las copias de la nube: ' + (e.message || e.code) + '. Vuelve a intentarlo con conexión.'); }
+      }
     },
 
     async salir() {
@@ -675,6 +772,7 @@
       const soloAqui = Prefs.alumnadoLocal() && (await IDB.all()).some(r => ALUMNADO.test(r.id) && r.data);
       if (soloAqui && !confirm('Los datos del alumnado están guardados solo en este dispositivo y se borrarán al cerrar la sesión. Exporta antes una copia desde Ajustes si la necesitas. ¿Cerrar igualmente?')) return;
       await UI.antesDeSalir();
+      Registro.add('salir', 'Has cerrado la sesión'); clearTimeout(Registro._t);
       const base = nombreBase(Auth.sesion);
       lsSet(Prefs.k(), null); Auth.guardarSesion(null); Auth.guardarTok(null);
       await IDB.borrarBase(base);
