@@ -1833,7 +1833,10 @@ const fLongL = (s, lg) => { const T = L10N[lg] || L10N.es; const d = parseD(s); 
 const rel = n => n === 0 ? 'hoy' : n === 1 ? 'mañana' : n === -1 ? 'ayer' : n > 0 ? `en ${n} días` : `hace ${-n} días`;
 const words = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const GCOLORS = [['g1','Malaquita'],['g2','Lapislázuli'],['g3','Ocre'],['g4','Amatista'],['g5','Hematites'],['g6','Olivino'],['g7','Rodocrosita'],['g8','Turquesa'],['g9','Grafito']];
-const TAGS = ['TDAH','Permiso baño','Nivel adaptado','NEAE','Nouvingut','Lectoescritura','Repetidor'];
+const TAGS = ['TDAH','ACIS','PT','Nivel adaptado','Nouvingut','Repetidor'];
+const TAGS_QUITADAS = ['Permiso baño', 'NEAE', 'Lectoescritura'];
+const TAGS_DELANTE = ['TDAH', 'ACIS', 'PT', 'Nouvingut', 'Nivel adaptado'];
+function normAlumno(a) { fijarNombre(a); if (a.tags?.length) a.tags = [...new Set(a.tags.map(t => t === 'Recién llegado' ? 'Nouvingut' : t))].filter(t => !TAGS_QUITADAS.includes(t)); const n = parseInt(a.num, 10); if (n > 0) a.num = n; else delete a.num; return a; }
 const VAL3 = { si:'Sí', medias:'A medias', no:'No' };
 const ASIS = { P:'Presente', R:'Retraso', F:'Falta', J:'Justificada' };
 const SORTEO = { bien:'Bien', regular:'Regular', no:'No sabe' };
@@ -1905,12 +1908,15 @@ function partirNombre(txt) {
   return { pila: w[0], apellidos: w.slice(1).join(' ') };
 }
 function fijarNombre(a) { if (a.pila === undefined) Object.assign(a, partirNombre(a.nombre || '')); a.nombre = [a.pila, a.apellidos].filter(Boolean).join(' '); return a; }
-const ordenarAlumnos = g => g.alumnos.sort((x, y) => (x.apellidos || '').localeCompare(y.apellidos || '', 'es', { sensitivity: 'base' }) || (x.pila || '').localeCompare(y.pila || '', 'es', { sensitivity: 'base' }));
+/* con número de lista: primero por número; sin número: detrás, por orden alfabético */
+const numsRepetidos = g => { const c = {}; g.alumnos.forEach(a => { if (a.num) c[a.num] = (c[a.num] || 0) + 1; }); return Object.keys(c).filter(k => c[k] > 1).map(Number).sort((a, b) => a - b); };
+const numPre = a => a.num ? `<span class="muted">${a.num}.</span> ` : '';
+const ordenarAlumnos = g => g.alumnos.sort((x, y) => ((x.num || Infinity) - (y.num || Infinity) || 0) || (x.apellidos || '').localeCompare(y.apellidos || '', 'es', { sensitivity: 'base' }) || (x.pila || '').localeCompare(y.pila || '', 'es', { sensitivity: 'base' }));
 function normMat(d) { const m = d && Array.isArray(d.asigs) ? d : { asigs: [] }; m.asigs.forEach(a => { a.carpetas = a.carpetas || []; a.archivos = a.archivos || []; }); return m; }
 function hydrate(docs) {
   S = { config: Object.assign(DEFAULT_CONFIG(), docs.config || {}), grupos: docs.grupos?.list || [], agenda: docs.agenda?.list || [], ideas: docs.ideas?.list || [], pendientes: docs.pendientes?.list || [], pendgrupo: docs.pendgrupo?.map || {}, planes: {}, regs: {}, cal: {}, materiales: normMat(docs.materiales), libros: {} };
   S.config.pesos = Object.assign(DEFAULT_CONFIG().pesos, S.config.pesos || {});
-  S.grupos.forEach(g => { g.alumnos.forEach(a => { fijarNombre(a); if (a.tags?.includes('Recién llegado')) a.tags = [...new Set(a.tags.map(t => t === 'Recién llegado' ? 'Nouvingut' : t))]; }); ordenarAlumnos(g); });
+  S.grupos.forEach(g => { g.alumnos.forEach(normAlumno); ordenarAlumnos(g); });
   Object.keys(docs).forEach(id => {
     if (id.startsWith('plan_')) Object.assign(S.planes, docs[id].map || {});
     if (id.startsWith('reg_')) Object.assign(S.regs, docs[id].map || {});
@@ -2321,12 +2327,12 @@ VIEWS.grupo = () => {
   } else if (t === 'alumnado') {
     const nPend = g.alumnos.filter(a => a.pendiente).length;
     body = `<div class="cols"><div class="panel"><h3>${g.alumnos.length} alumnos${nPend ? ` <span class="small muted">· ${nPend} con materia pendiente (${g.alumnos.filter(a => a.pendiente && !a.pendRecuperada).length} sin recuperar)</span>` : ''}</h3>
-      ${g.alumnos.length ? `<div class="list">${g.alumnos.map(a => `<div class="li" style="flex-wrap:wrap"><input type="text" value="${esc(a.apellidos || '')}" placeholder="Apellidos" data-f="alnombre" data-k="apellidos" data-id="${a.id}" style="flex:2;min-width:160px" aria-label="Apellidos"><input type="text" value="${esc(a.pila || '')}" placeholder="Nombre" data-f="alnombre" data-k="pila" data-id="${a.id}" style="flex:1;min-width:110px" aria-label="Nombre">
+      ${g.alumnos.length ? `<div class="row small" style="margin-bottom:8px;gap:6px"><span class="muted">Nº de lista:</span><button class="btn sm ghost" data-a="alnumerar">Numerar 1–${g.alumnos.length} en el orden actual</button>${g.alumnos.some(a => a.num) ? `<button class="btn sm ghost" data-a="alsinnum">Quitar los números</button>` : ''}</div>${(() => { const rep = numsRepetidos(g); return rep.length ? `<p class="small" style="color:var(--warn);margin:0 0 8px">⚠ Número${rep.length > 1 ? 's' : ''} de lista repetido${rep.length > 1 ? 's' : ''}: ${rep.join(', ')}</p>` : ''; })()}<div class="list">${g.alumnos.map(a => `<div class="li" style="flex-wrap:wrap"><input type="number" inputmode="numeric" min="1" step="1" value="${a.num || ''}" placeholder="Nº" data-f="alnum" data-id="${a.id}" style="width:64px;flex:0 0 64px" aria-label="Número de lista" title="Número de lista (opcional). Si lo pones, manda sobre el orden alfabético."><input type="text" value="${esc(a.apellidos || '')}" placeholder="Apellidos" data-f="alnombre" data-k="apellidos" data-id="${a.id}" style="flex:2;min-width:160px" aria-label="Apellidos"><input type="text" value="${esc(a.pila || '')}" placeholder="Nombre" data-f="alnombre" data-k="pila" data-id="${a.id}" style="flex:1;min-width:110px" aria-label="Nombre">
         <div class="row" style="width:100%">${TAGS.map(tg => `<label class="check tiny"><input type="checkbox" data-f="altag" data-id="${a.id}" data-t="${esc(tg)}" ${a.tags?.includes(tg) ? 'checked' : ''}>${esc(tg)}</label>`).join('')}</div>
         <input type="text" placeholder="Observaciones (medidas, permisos…)" value="${esc(a.obs || '')}" data-f="alobs" data-id="${a.id}" style="flex:1"><button class="iconbtn" data-a="delal" data-id="${a.id}" aria-label="Eliminar alumno">✕</button>
         <div class="row" style="width:100%"><input type="text" placeholder="Materia pendiente de otro curso (p. ej. ByG 1.º ESO)" value="${esc(a.pendiente || '')}" data-f="alpend" data-id="${a.id}" style="flex:1;min-width:200px">${a.pendiente ? `<span class="small muted">Recuperada</span><div class="seg"><button data-a="alrecup" data-id="${a.id}" data-v="1" aria-pressed="${!!a.pendRecuperada}">Sí</button><button data-a="alrecup" data-id="${a.id}" data-v="0" aria-pressed="${!a.pendRecuperada}">No</button></div>` : ''}</div></div>`).join('')}</div>` : `<p class="empty">Sin alumnos todavía.</p>`}</div>
       <div class="panel stack"><h3>Añadir alumnos</h3><label class="f">Pega la lista (un alumno por línea)<textarea id="pastealumnos" rows="8" placeholder="Nombre Apellido1 Apellido2&#10;Lucía García Pérez"></textarea></label><button class="btn primary" data-a="addalumnos">Añadir</button>
-      <p class="small muted">La primera palabra se toma como nombre y el resto como apellidos. Si la lista viene como «Apellidos, Nombre» (con coma), también se entiende. Los nombres compuestos se corrigen luego en sus casillas. Se ordenan por apellido. Las etiquetas (TDAH, permiso baño…) aparecen luego en el modo directo.</p></div></div>`;
+      <p class="small muted">La primera palabra se toma como nombre y el resto como apellidos. Si la lista viene como «Apellidos, Nombre» (con coma), también se entiende. Los nombres compuestos se corrigen luego en sus casillas. Se ordenan por apellido. Si pones <b>números de lista</b>, mandan sobre el orden alfabético (quien no tenga número va detrás, por apellido). Las etiquetas (TDAH, ACIS, PT…) aparecen luego en el modo directo.</p></div></div>`;
   } else if (t === 'plano') {
     if (!g.alumnos.length) body = `<div class="panel empty">Añade primero los alumnos del grupo.</div>`;
     else {
@@ -2356,7 +2362,7 @@ VIEWS.grupo = () => {
     const seg = seguimiento(g.id);
     body = g.alumnos.length ? segToggle() + `<div class="panel"><p class="small muted" style="margin-top:0">Resumen de lo registrado en el modo directo. Escala: sí ${S.config.pesos.val3.si} · a medias ${S.config.pesos.val3.medias} · no ${S.config.pesos.val3.no}. <b>Trabajo en clase</b> es la media de todos sus ítems: cada registro de trabajo diario y cada pregunta del sorteo cuentan como uno más. Cuánto pesa en la nota se decidirá en la evaluación (última fase).</p>
       <div class="tablewrap"><table class="data"><tr><th>Alumno</th><th>Faltas</th><th>Just.</th><th>Retrasos</th><th>Deberes</th><th>Trabajo diario</th><th>Preguntas</th><th>Trabajo en clase (media)</th><th>Actitud (1–5)</th><th>Baño</th></tr>
-      ${g.alumnos.map(a => { const o = seg[a.id]; return `<tr><td>${esc(a.nombre)}${(a.tags || []).map(x => ` <span class="tag">${esc(x)}</span>`).join('')}${a.pendiente ? ` <span class="pill ${a.pendRecuperada ? 'ok' : 'warn'}">Pte. ${esc(a.pendiente)}${a.pendRecuperada ? ' ✓' : ''}</span>` : ''}</td><td class="num">${o.F || ''}</td><td class="num">${o.J || ''}</td><td class="num">${o.R || ''}</td><td class="num">${n1(o.debM)} <span class="tiny muted">(${o.deb.length})</span></td><td class="num">${n1(o.traM)}</td><td class="num">${n1(o.pregM)} <span class="tiny muted">(${o.preg.length})</span></td><td class="num"><b>${n1(o.trabajoClase)}</b></td><td class="num">${n1(o.actM)}${Object.keys(o.actTags).length ? `<div class="tiny" style="text-align:right">${Object.entries(o.actTags).map(([t, c]) => `<span style="color:var(--${ACT_POS.includes(t) ? 'ok' : 'bad'})">${esc(t)}${c > 1 ? ' ×' + c : ''}</span>`).join(' · ')}</div>` : ''}</td><td class="num">${o.bano || ''}</td></tr>`; }).join('')}</table></div></div>` : `<div class="panel empty">Añade alumnos para ver su seguimiento.</div>`;
+      ${g.alumnos.map(a => { const o = seg[a.id]; return `<tr><td>${numPre(a)}${esc(a.nombre)}${(a.tags || []).map(x => ` <span class="tag">${esc(x)}</span>`).join('')}${a.pendiente ? ` <span class="pill ${a.pendRecuperada ? 'ok' : 'warn'}">Pte. ${esc(a.pendiente)}${a.pendRecuperada ? ' ✓' : ''}</span>` : ''}</td><td class="num">${o.F || ''}</td><td class="num">${o.J || ''}</td><td class="num">${o.R || ''}</td><td class="num">${n1(o.debM)} <span class="tiny muted">(${o.deb.length})</span></td><td class="num">${n1(o.traM)}</td><td class="num">${n1(o.pregM)} <span class="tiny muted">(${o.preg.length})</span></td><td class="num"><b>${n1(o.trabajoClase)}</b></td><td class="num">${n1(o.actM)}${Object.keys(o.actTags).length ? `<div class="tiny" style="text-align:right">${Object.entries(o.actTags).map(([t, c]) => `<span style="color:var(--${ACT_POS.includes(t) ? 'ok' : 'bad'})">${esc(t)}${c > 1 ? ' ×' + c : ''}</span>`).join(' · ')}</div>` : ''}</td><td class="num">${o.bano || ''}</td></tr>`; }).join('')}</table></div></div>` : `<div class="panel empty">Añade alumnos para ver su seguimiento.</div>`;
   } else {
     body = `<div class="panel stack" style="max-width:560px"><div class="fgrid"><label class="f">Nombre del grupo<input type="text" value="${esc(g.nombre)}" data-f="gfield" data-k="nombre"></label>
       <label class="f">Nombre de la materia<input type="text" value="${esc(g.materia || '')}" data-f="gfield" data-k="materia"></label>
@@ -2845,7 +2851,7 @@ function tabDirecto(key, g, f, fecha) {
         : (v ? `<span class="pill v-${v}">${VAL3[v]}</span>` : `<span class="tiny muted">—</span>`);
       const nPreg = r.sorteos.filter(x => x.alumnoId === a.id && x.val && x.val !== 'skip'); const last = nPreg[nPreg.length - 1];
       return `<button class="scard ${['F', 'J'].includes(as) ? 'absent' : ''} ${out ? 'out' : ''}" data-a="tapal" data-id="${a.id}">
-        <span class="nm">${esc(a.nombre)}</span><span class="row" style="gap:4px"><span class="icons">${a.tags?.includes('Permiso baño') ? '🚻✓ ' : ''}${a.tags?.includes('TDAH') ? 'TDAH ' : ''}${a.pendiente && !a.pendRecuperada ? 'Pte. ' : ''}${r.notas.some(n => n.alumnoId === a.id) ? '📝' : ''}</span>${badge}${out ? `<span class="pill info">Fuera ${Math.max(0, Math.round((Date.now() - out.sale) / 60000))}′</span>` : ''}${last ? `<span class="pill ${last.val === 'bien' ? 'ok' : last.val === 'regular' ? 'warn' : 'bad'}">🎲 ${SORTEO[last.val]}</span>` : ''}</span></button>`;
+        <span class="nm">${numPre(a)}${esc(a.nombre)}</span><span class="row" style="gap:4px"><span class="icons">${a.tags?.includes('TDAH') ? 'TDAH ' : ''}${a.pendiente && !a.pendRecuperada ? 'Pte. ' : ''}${r.notas.some(n => n.alumnoId === a.id) ? '📝' : ''}</span>${badge}${out ? `<span class="pill info">Fuera ${Math.max(0, Math.round((Date.now() - out.sale) / 60000))}′</span>` : ''}${last ? `<span class="pill ${last.val === 'bien' ? 'ok' : last.val === 'regular' ? 'warn' : 'bad'}">🎲 ${SORTEO[last.val]}</span>` : ''}</span></button>`;
   }
 }
 
@@ -2916,7 +2922,7 @@ function panelReglas(g) {
       <div><div class="label" style="color:var(--bad)">Condicionantes · se cumplen sí o sí</div>${lista('cond')}</div>
       <div><div class="label" style="color:var(--ok)">Preferencias · mejor si se cumplen</div>${lista('pref')}
         <div class="stack" style="gap:4px;margin-top:6px">
-          <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="etiquetasDelante" ${R.etiquetasDelante ? 'checked' : ''}>Alumnado con TDAH, NEAE, nouvingut o nivel adaptado, delante</label>
+          <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="etiquetasDelante" ${R.etiquetasDelante ? 'checked' : ''}>Alumnado con TDAH, ACIS, PT, nouvingut o nivel adaptado, delante</label>
           <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="noRepetir" ${R.noRepetir ? 'checked' : ''}>Que no repitan compañero de mesa del plano actual</label>
           <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="mezclar" ${R.mezclar ? 'checked' : ''}>Mezclar niveles en cada mesa (según la nota de trabajo en clase)</label></div></div>
     </div>
@@ -2942,7 +2948,7 @@ function sugerirSitios(g, semilla) {
   const segu = R.mezclar ? seguimiento(g.id) : {}; const notas = ids.map(id => segu[id]?.trabajoClase ?? null);
   const media = (() => { const v = notas.filter(x => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; })();
   const prevPares = new Set(); if (R.noRepetir) { const porMesa = {}; Object.entries(pl.asientos).forEach(([k, id]) => { const p = pos(k); (porMesa[p.f + '-' + p.m] = porMesa[p.f + '-' + p.m] || []).push(id); }); Object.values(porMesa).forEach(l => l.forEach(a => l.forEach(b => { if (a < b) prevPares.add(a + '|' + b); }))); }
-  const etiq = ids.map(id => (g.alumnos.find(a => a.id === id).tags || []).some(t => ['TDAH', 'NEAE', 'Nouvingut', 'Nivel adaptado'].includes(t)));
+  const etiq = ids.map(id => (g.alumnos.find(a => a.id === id).tags || []).some(t => TAGS_DELANTE.includes(t)));
   const fijoSeat = {}; [...R.cond, ...R.pref].filter(r => r.tipo === 'fijo').forEach(r => { const k = Object.keys(pl.asientos).find(k => pl.asientos[k] === r.a); if (k) fijoSeat[r.a] = sitios.indexOf(k); });
   const evalRegla = (r, seatOf) => { const a = idx[r.a], b = idx[r.b]; if (a === undefined) return true; const sa = seatOf[a];
     if (r.tipo === 'delante') return P[sa].f < (r.filas || 1);
@@ -3154,7 +3160,6 @@ function banoModal(a) {
   const exam = S.agenda.some(x => x.grupoId === grupoId && x.tipo === 'examen' && x.fecha === fecha);
   const f = franja(franjaId); const nm = nowMin(); const esHoy = fecha === todayStr();
   const avisos = [];
-  if (a.tags?.includes('Permiso baño')) avisos.push(['ok', '✔ Tiene permiso para ir al baño']);
   if (fuera.length) avisos.push(['warn', `Ya está fuera: ${fuera.map(b => esc(alNombre(g, b.alumnoId))).join(', ')}`]);
   if (exam) avisos.push(['warn', 'Hoy hay examen con este grupo']);
   if (esHoy && (nm - tmin(f.inicio) < 10 && nm >= tmin(f.inicio))) avisos.push(['info', 'Acaba de empezar la clase']);
@@ -3241,7 +3246,7 @@ const A = {
     if (sel === ocupa) { UI.planoSel = null; UI.keepScroll = true; render(); return; }
     moverAlumno(g, sel, k); UI.planoSel = null; UI.keepScroll = true; render(); },
   planoauto(el) { const g = grupo(UI.grupoId); const pl = g.plano; const v = el.dataset.v; pl.asientos = {};
-    if (v !== 'vaciar') { const prio = a => (a.tags || []).some(t => ['TDAH', 'Nouvingut', 'Nivel adaptado', 'NEAE'].includes(t)) ? 0 : 1;
+    if (v !== 'vaciar') { const prio = a => (a.tags || []).some(t => TAGS_DELANTE.includes(t)) ? 0 : 1;
       let lista = [...g.alumnos]; if (v === 'azar') lista.sort(() => Math.random() - .5); lista = lista.map((a, i) => [a, i]).sort((x, y) => prio(x[0]) - prio(y[0]) || x[1] - y[1]).map(x => x[0]);
       const sitios = asientosOrden(pl); lista.forEach((a, i) => { if (sitios[i]) pl.asientos[sitios[i]] = a.id; }); }
     touch('grupos'); UI.planoSel = null; UI.keepScroll = true; render(); },
@@ -3375,6 +3380,10 @@ const A = {
     const g = { id: uid(), nombre: n, materia: asg === 'tutoria' && $('#ng-m').value.trim() === 'Biología y Geología' ? 'Tutoría' : $('#ng-m').value.trim(), nivel: $('#ng-v').value.trim() || ASIG[asg]?.nivel || '', asig: asg, idioma: document.querySelector('input[name="ng-i"]:checked')?.value || 'es', color: (GCOLORS.find(([c]) => !S.grupos.some(x => x.color === c)) || GCOLORS[S.grupos.length % GCOLORS.length])[0], alumnos: [] };
     S.grupos.push(g); touch('grupos'); closeModal(); UI.view = 'grupo'; UI.grupoId = g.id; UI.grupoTab = 'alumnado'; toast('Grupo creado'); render(); },
   gidioma(el) { grupo(UI.grupoId).idioma = el.dataset.v; touch('grupos'); UI.keepScroll = true; render(); },
+  alnumerar() { const g = grupo(UI.grupoId); const hay = g.alumnos.some(a => a.num); const go = () => { g.alumnos.forEach((a, i) => { a.num = i + 1; }); touch('grupos'); UI.keepScroll = true; render(); toast('Números de lista puestos'); };
+    if (!hay) return go(); modal(`<h2>¿Volver a numerar?</h2><p>Se sustituyen los números de lista actuales por 1–${g.alumnos.length} en el orden en que aparecen ahora.</p><div class="row"><button class="btn primary" data-a="alnumerarok">Numerar</button><button class="btn" data-a="close">Cancelar</button></div>`); UI._numerar = go; },
+  alnumerarok() { closeModal(); UI._numerar?.(); UI._numerar = null; },
+  alsinnum() { const g = grupo(UI.grupoId); g.alumnos.forEach(a => { delete a.num; }); ordenarAlumnos(g); touch('grupos'); UI.keepScroll = true; render(); toast('Vuelven al orden alfabético'); },
   addalumnos() { const g = grupo(UI.grupoId); const ls = $('#pastealumnos').value.split(/\r?\n/).map(s => s.replace(/\t/g, ' ').trim()).filter(Boolean); ls.forEach(n => g.alumnos.push(fijarNombre({ id: uid(), ...partirNombre(n), tags: [], obs: '' }))); ordenarAlumnos(g); touch('grupos'); toast(`${ls.length} alumnos añadidos`); render(); },
   delal(el) { const g = grupo(UI.grupoId); g.alumnos = g.alumnos.filter(a => a.id !== el.dataset.id); touch('grupos'); UI.keepScroll = true; render(); },
   alrecup(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); a.pendRecuperada = el.dataset.v === '1'; touch('grupos'); UI.keepScroll = true; render(); },
@@ -3413,6 +3422,7 @@ const Fd = {
   pgdone(el) { const L = S.pendgrupo[el.dataset.g] || []; const it = L.find(x => x.id === el.dataset.id); if (it) { it.done = el.checked; it.doneEn = el.checked ? (el.dataset.k || todayStr()) : null; touch('pendgrupo'); } },
   agdone(el) { if (UI.view === 'sesion' && UI.sesTab === 'cierre') guardarBorradorCierre(); const a = S.agenda.find(x => x.id === el.dataset.id); if (a) { a.done = el.checked; touch('agenda'); UI.keepScroll = true; setTimeout(() => { render(); refreshAgModal(); }, 150); } },
   comunicado(el) { const a = S.agenda.find(x => x.id === el.dataset.id); if (a) { a.comunicado = el.checked; touch('agenda'); } },
+  alnum(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); const n = parseInt(el.value, 10); if (n > 0) a.num = n; else delete a.num; touch('grupos'); },
   alnombre(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); a[el.dataset.k] = el.value.trim(); a.nombre = [a.pila, a.apellidos].filter(Boolean).join(' '); touch('grupos'); },
   alpend(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); const had = !!a.pendiente; a.pendiente = el.value.trim(); touch('grupos'); if (had !== !!a.pendiente) { UI.keepScroll = true; UI.refocus = el.dataset.id; } },
   alobs(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); a.obs = el.value; touch('grupos'); },
@@ -3454,6 +3464,7 @@ document.addEventListener('change', e => { const el = e.target.closest('[data-f]
   else if (el.dataset.f === 'plist' && el.dataset.k === 'min') { UI.keepScroll = true; render(); }
   else if (el.dataset.f === 'alpend') { UI.keepScroll = true; render(); }
   else if (['libu', 'liba', 'libt'].includes(el.dataset.f) && (el.dataset.f === 'libu' || el.dataset.k === 'titulo')) { UI.keepScroll = true; render(); }
+  else if (el.dataset.f === 'alnum') { const gg = grupo(UI.grupoId); ordenarAlumnos(gg); touch('grupos'); UI.keepScroll = true; render(); }
   else if (el.dataset.f === 'alnombre') { ordenarAlumnos(grupo(UI.grupoId)); touch('grupos'); UI.keepScroll = true; render(); } });
 document.addEventListener('dragstart', e => { const el = e.target.closest?.('[data-drag]'); if (el?.dataset.drag) { e.dataTransfer.setData('text/plain', el.dataset.drag); e.dataTransfer.effectAllowed = 'move'; } });
 document.addEventListener('dragover', e => { const s = e.target.closest?.('.seat'); if (s) { e.preventDefault(); s.classList.add('drop'); } });
@@ -3542,7 +3553,7 @@ function cargarEjemplo() {
   const G = [{ nombre: '1.º ESO A (ejemplo)', materia: 'Biología y Geología', nivel: '1.º ESO', color: 'g1', asig: 'byg1eso' }, { nombre: '3.º ESO B (ejemplo)', materia: 'Biologia i Geologia', nivel: '3.º ESO', color: 'g2', idioma: 'va', asig: 'byg3eso' }, { nombre: '2.º Bach (ejemplo)', materia: 'Geología y Ciencias Ambientales', nivel: '2.º Bach', color: 'g3', asig: 'geo2' }]
     .map((g, i) => ({ id: uid(), ...g, ejemplo: true, alumnos: nombres[i].map(n => fijarNombre({ id: uid(), ...partirNombre(n), tags: [], obs: '' })) }));
   G.forEach(ordenarAlumnos);
-  G[0].alumnos[3].tags = ['TDAH', 'Permiso baño']; G[0].alumnos[3].obs = 'Instrucciones de una en una; adaptación de tiempo y formato en exámenes.';
+  G[0].alumnos[3].tags = ['TDAH']; G[0].alumnos[3].obs = 'Instrucciones de una en una; adaptación de tiempo y formato en exámenes.';
   G[0].alumnos[7].tags = ['Nivel adaptado']; G[1].alumnos[4].tags = ['Nouvingut']; G[1].alumnos[4].obs = 'Glosario bilingüe.'; G[1].alumnos[9].tags = ['Repetidor'];
   S.grupos.push(...G);
   const H = [[1, 0, 0, '12'], [1, 3, 1, 'Lab'], [1, 4, 2, '21'], [2, 1, 1, '14'], [2, 2, 0, '12'], [3, 0, 2, '21'], [3, 3, 0, 'Lab'], [4, 1, 1, '14'], [4, 4, 2, '21'], [5, 2, 0, '12'], [5, 3, 1, '14']];
@@ -5155,7 +5166,7 @@ function aplicarDoc(id, data) {
   if (Save.dirty.has(id)) return false; // tengo cambios propios sin guardar: mandan los míos
   const nuevo = data ? JSON.stringify(data) : null; if (nuevo === JSON.stringify(docData(id))) return false;
   if (id === 'config') { S.config = Object.assign(DEFAULT_CONFIG(), data || {}); S.config.pesos = Object.assign(DEFAULT_CONFIG().pesos, S.config.pesos || {}); }
-  else if (['grupos', 'agenda', 'ideas', 'pendientes'].includes(id)) { S[id] = data?.list || []; if (id === 'grupos') S.grupos.forEach(g => { g.alumnos.forEach(a => { fijarNombre(a); if (a.tags?.includes('Recién llegado')) a.tags = [...new Set(a.tags.map(t => t === 'Recién llegado' ? 'Nouvingut' : t))]; }); ordenarAlumnos(g); }); }
+  else if (['grupos', 'agenda', 'ideas', 'pendientes'].includes(id)) { S[id] = data?.list || []; if (id === 'grupos') S.grupos.forEach(g => { g.alumnos.forEach(normAlumno); ordenarAlumnos(g); }); }
   else if (id === 'pendgrupo') S.pendgrupo = data?.map || {};
   else if (id === 'materiales') S.materiales = normMat(data);
   else if (id.startsWith('libro_')) { if (data && data.id) S.libros[id.slice(6)] = data; else delete S.libros[id.slice(6)]; }
