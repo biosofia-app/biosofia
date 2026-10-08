@@ -385,11 +385,11 @@ table.nt .low, .rubbtn.low, .calcell.low, .rubnota.low{color:var(--bad)}
 .pickrow{display:flex; align-items:flex-start; gap:8px; padding:5px 0; border-top:1px solid var(--line); line-height:1.35}
 .pickrow input{margin-top:3px}
 .rubedit{border:1px solid var(--line); border-radius:var(--r); padding:10px; background:var(--bg)}
-.rubdesc{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px}
+.rubdesc{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px}
 .rubdesc textarea{min-height:48px; font-size:.82rem}
 .rubrow{display:grid; grid-template-columns:minmax(150px,1fr) minmax(0,3fr); gap:10px; align-items:stretch}
 .rubit{display:flex; flex-direction:column; gap:2px; justify-content:center}
-.rublv{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px}
+.rublv{display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:6px}
 .lvl{border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:7px 8px; text-align:left; cursor:pointer; font-size:.8rem; line-height:1.3; min-height:54px; color:var(--ink)}
 .lvl b{display:block; margin-bottom:2px}
 .lvl:hover{border-color:var(--accent)}
@@ -3831,13 +3831,24 @@ const CURR = {
    Un documento por grupo: cal_<grupoId>
    { curr, niveles[4], pesosPorEval, arbol:[nodo], instr:[instrumento], evalPesos:{ev:peso}, finalManual:{alumno:{nota,motivo}} }
    nodo: { id, nombre, peso, pesoEv:{ev:peso}, hijos:[nodo], (hoja:) modo 'pond'|'media', fuentes:{trabajo|deberes|actitud|preguntas: peso}, pesoInstr, reparto 'igual'|'mano', crit:[código] }
-   instrumento: { id, nombre, nodo, ev, fecha, modo 'directa'|'rubrica', peso, crit:[{c,p}], items:[{id,texto,peso,crit:[c],desc:[4]}], notas:{al: n|'NP'|'EX'}, rub:{al:{item:nivel}},
+   instrumento: { id, nombre, nodo, ev, fecha, modo 'directa'|'rubrica', peso, crit:[{c,p}], items:[{id,texto,peso,crit:[c],vals?:[nota de cada nivel 0…n-1],desc:[n]}], notas:{al: n|'NP'|'EX'}, rub:{al:{item:nivel}},
                   recupera: ''|idInstrumento|'ev:<evaluación>', recModo 'sustituye'|'maximo'|'media', recTope: nota máxima al recuperar }
    reglas: nodo.minimo {nota, ambito 'media'|'cada', tope} · hoja.descartarPeor + descMin · cal.redondeo {decima 1–9 (10 = nunca), noAprobar, final 'exacta'|'boletin', cualit}
    Cálculo: cada nota se descompone en partes {w, g, c} (peso, nota, criterio). Las partes sin criterio se reparten
    entre los criterios en proporción a su peso; así la media ponderada de criterios y competencias = nota global. */
 const FUENTES = [['trabajo', 'Trabajo diario'], ['deberes', 'Deberes'], ['actitud', 'Actitud'], ['preguntas', 'Preguntas orales']];
-const NIVELES_DEF = [2.5, 5, 7.5, 10];
+const NIVELES_DEF = [0, 2.5, 5, 7.5, 10];
+/* niveles de rúbrica: nivel 0…n-1; cada ítem puede tener los suyos (it.vals) o usar los del grupo (cal.niveles) */
+const fixNiv = a => { const v = Array.isArray(a) && a.length ? a.map(Number) : [...NIVELES_DEF]; return v.length === 4 ? [0, ...v] : v; };
+const nivelesItem = (cal, it) => (it.vals && it.vals.length >= 2 ? it.vals : cal.niveles).map(Number);
+const repartirNiv = n => Array.from({ length: n }, (_, k) => Math.round(k * 1000 / (n - 1)) / 100);
+/* rúbricas de antes (niveles 1–4): se añade el nivel 0 sin cambiar ninguna nota */
+function migRub(cal) {
+  let cambio = false;
+  if (!Array.isArray(cal.niveles) || cal.niveles.length === 4) { cal.niveles = fixNiv(cal.niveles); cambio = true; }
+  (cal.instr || []).forEach(i => (i.items || []).forEach(it => { if (!it.v2) { const d = it.desc || []; it.desc = ['', d[0] || '', d[1] || '', d[2] || '', d[3] || '']; it.v2 = true; cambio = true; } }));
+  return cambio;
+}
 const currOf = cal => cal?.curr === 'custom' ? { nombre: 'Criterios propios', corto: 'elaboración propia', ce: cal.custom?.ce || [] } : CURR[cal?.curr];
 const currAuto = g => { if (ASIG[g.asig]) return ASIG[g.asig].curr || ''; const n = words((g.nivel || '') + ' ' + (g.nombre || '') + ' ' + (g.materia || '')); if (/bach|geologia y ciencias|ciencias ambientales/.test(n)) return 'bach2'; if (/eso/.test(n) && /(^|[^0-9])1/.test(n)) return 'eso1'; if (/eso/.test(n) && /(^|[^0-9])3/.test(n)) return 'eso3'; return ''; };
 const ceDe = code => String(code).split('.')[0];
@@ -3850,6 +3861,7 @@ function calDe(g) {
   const A0 = ASIG[g.asig]; if (A0 && (c.curr || '') !== A0.curr) { c.curr = A0.curr; touch('cal_' + g.id); }
   if (c.curr === 'custom') c.custom = c.custom || { ce: [] };
   c.instr = c.instr || []; c.evalPesos = c.evalPesos || {}; c.finalManual = c.finalManual || {}; c.niveles = c.niveles || [...NIVELES_DEF]; c.arbol = c.arbol || [];
+  if (migRub(c)) touch('cal_' + g.id);
   return c;
 }
 const touchCal = gid => touch('cal_' + gid);
@@ -3892,9 +3904,9 @@ function notaInstr(cal, ins, aid) {
     const its = (ins.items || []).filter(i => (Number(i.peso) || 0) > 0);
     const tw = its.reduce((s, i) => s + Number(i.peso), 0);
     if (v === 'NP') return { g: 0, parts: tw ? its.flatMap(i => splitCrit(Number(i.peso) / tw, 0, i.crit)) : [{ w: 1, g: 0, c: null }] };
-    const sel = ins.rub?.[aid] || {}; const done = its.filter(i => sel[i.id]); if (!done.length) return null;
+    const sel = ins.rub?.[aid] || {}; const done = its.filter(i => typeof sel[i.id] === 'number' && sel[i.id] >= 0 && sel[i.id] < nivelesItem(cal, i).length); if (!done.length) return null;
     const dw = done.reduce((s, i) => s + Number(i.peso), 0);
-    const parts = done.flatMap(i => splitCrit(Number(i.peso) / dw, cal.niveles[sel[i.id] - 1] ?? 0, i.crit));
+    const parts = done.flatMap(i => splitCrit(Number(i.peso) / dw, nivelesItem(cal, i)[sel[i.id]] ?? 0, i.crit));
     return { g: parts.reduce((s, p) => s + p.w * p.g, 0), parts, parcial: done.length < its.length };
   }
   const g = v === 'NP' ? 0 : typeof v === 'number' ? v : null; if (g === null) return null;
@@ -4192,7 +4204,7 @@ function vistaCalConfig(g, cal) {
   </div><div class="stack">
     ${panelCurr(g, cal)}
     ${panelRedondeo(cal)}
-    <div class="panel stack"><h3>Rúbricas</h3><div class="small muted">Nota que vale cada nivel</div><div class="row">${[0, 1, 2, 3].map(i => `<label class="row small" style="gap:4px;flex-wrap:nowrap">${i + 1} =<input type="number" min="0" max="10" step="0.1" class="pct" value="${esc(String(cal.niveles[i]))}" data-f="calniv" data-i="${i}"></label>`).join('')}</div></div>
+    <div class="panel stack"><h3>Rúbricas</h3><div class="small muted">Nota (sobre 10) que vale cada nivel por defecto. Cada ítem de una rúbrica puede tener sus propios niveles.</div><div class="row">${cal.niveles.map((v, i) => `<label class="row small" style="gap:4px;flex-wrap:nowrap">${i} =<input type="number" min="0" max="10" step="0.1" class="pct" value="${esc(String(v))}" data-f="calniv" data-i="${i}"></label>`).join('')}</div></div>
     <div class="panel stack"><h3>Nota final del curso</h3><p class="tiny muted" style="margin:0">Media de las evaluaciones con estos porcentajes. Luego puedes cambiar a mano la nota final de cada alumno.</p>
       ${evs.map(e => `<label class="row small between" style="flex-wrap:nowrap">${esc(e.nombre)}<span class="row" style="gap:4px;flex-wrap:nowrap"><input type="number" min="0" class="pct" value="${esc(String(cal.evalPesos[e.id] ?? nf(100 / evs.length, 1).replace(',', '.')))}" data-f="calevpeso" data-ev="${e.id}">%</span></label>`).join('')}</div>
     <div class="panel stack"><h3>Plantillas</h3><p class="tiny muted" style="margin:0">Guarda las categorías y pesos (sin notas) para otros grupos o para otro instituto.</p>
@@ -4245,7 +4257,7 @@ function pickNodoModal() { const p = UI.pick; const g = grupo(UI.calG); const ca
   remodal(`<h2>Criterios por defecto · ${esc(n.nombre)}</h2>${pickHTML(cal, n.crit || [])}<div class="row" style="margin-top:12px"><button class="btn primary" data-a="close">Listo</button></div>`, 'wide'); }
 
 /* ---- editor de instrumento ---- */
-function nuevoItem() { return { id: uid(), texto: '', peso: 25, crit: [], desc: ['', '', '', ''] }; }
+function nuevoItem() { return { id: uid(), texto: '', peso: 25, crit: [], desc: ['', '', '', '', ''], v2: true }; }
 function insModal() {
   const d = UI.insD; const g = grupo(UI.calG); const cal = calDe(g); UI.calModal = insModal; UI._calRef = cal;
   if (UI.pick) {
@@ -4257,10 +4269,14 @@ function insModal() {
   const rubOtros = []; Object.entries(S.cal).forEach(([gid, c]) => (c.instr || []).forEach(i => { if (i.modo === 'rubrica' && (i.items || []).length && i.id !== d.id) rubOtros.push({ id: i.id, gid, t: `${i.nombre} · ${grupo(gid)?.nombre || ''}` }); }));
   const critBlock = `<div class="stack" style="gap:6px"><div class="row between"><div class="label">Criterios de evaluación</div>${cal.curr ? `<button class="btn sm" data-a="calpick" data-tipo="ins">Elegir criterios</button>` : ''}</div>
     ${!cal.curr ? '<p class="tiny muted" style="margin:0">Elige el currículo del grupo en Configuración para poder vincular criterios.</p>' : d.crit.length ? `<div class="stack" style="gap:4px">${d.crit.map(x => `<div class="row" style="flex-wrap:nowrap"><span class="tag">${esc(x.c)}</span><span class="small grow" style="min-width:0">${esc(critTexto(cal, x.c))}</span><input type="number" min="0" class="pct" value="${esc(String(x.p))}" data-f="inscp" data-c="${x.c}" data-calre="modal" aria-label="Peso de ${x.c}">%<button class="iconbtn" data-a="inscdel" data-c="${x.c}" aria-label="Quitar">✕</button></div>`).join('')}</div>${Math.abs(sumCr - 100) > .01 ? `<span class="tiny warnc">Suman ${nf(sumCr)} %: se reparte en proporción.</span>` : ''}` : `<p class="tiny muted" style="margin:0">Sin criterio: esta nota se repartirá entre los criterios en proporción${n?.crit?.length ? ` (o irá a los criterios por defecto de la categoría: ${n.crit.join(', ')})` : ''}.</p>`}</div>`;
-  const rubBlock = `<div class="stack" style="gap:10px"><div class="row between"><div class="label">Rúbrica · niveles 1–4 = ${cal.niveles.map(v => nf(v, 2)).join(' / ')}</div>${rubOtros.length ? `<select data-f="inscopy" style="width:auto;max-width:260px"><option value="">Copiar rúbrica de…</option>${rubOtros.map(o => `<option value="${o.gid}|${o.id}">${esc(o.t)}</option>`).join('')}</select>` : ''}</div>
+  const rubBlock = `<div class="stack" style="gap:10px"><div class="row between"><div class="label">Rúbrica · niveles por defecto 0–${cal.niveles.length - 1} = ${cal.niveles.map(v => nf(v, 2)).join(' / ')}</div>${rubOtros.length ? `<select data-f="inscopy" style="width:auto;max-width:260px"><option value="">Copiar rúbrica de…</option>${rubOtros.map(o => `<option value="${o.gid}|${o.id}">${esc(o.t)}</option>`).join('')}</select>` : ''}</div>
     ${d.items.map((it, k) => `<div class="rubedit"><div class="row" style="flex-wrap:nowrap"><span class="small muted">${k + 1}</span><input type="text" value="${esc(it.texto)}" placeholder="Qué se valora (p. ej. Conclusiones)" data-f="insit" data-id="${it.id}" data-k="texto" style="flex:1;min-width:0;font-weight:700"><input type="number" min="0" class="pct" value="${esc(String(it.peso))}" data-f="insit" data-id="${it.id}" data-k="peso" data-calre="modal" aria-label="Peso del ítem">%<button class="iconbtn" data-a="insitdel" data-id="${it.id}" aria-label="Quitar ítem">✕</button></div>
       <div class="row" style="margin:6px 0"><span class="tiny muted">Criterios:</span>${chipsCrit(it.crit)}${cal.curr ? `<button class="btn sm ghost" data-a="calpick" data-tipo="item" data-id="${it.id}">Elegir</button>` : ''}</div>
-      <div class="rubdesc">${[0, 1, 2, 3].map(l => `<label class="f"><span>${l + 1} · ${nf(cal.niveles[l], 2)}</span><textarea rows="2" data-f="insit" data-id="${it.id}" data-k="d${l}" placeholder="Descriptor (opcional)">${esc(it.desc?.[l] || '')}</textarea></label>`).join('')}</div></div>`).join('')}
+      ${(() => { const vs = nivelesItem(cal, it); return `<div class="row small" style="margin:2px 0 6px;gap:6px"><span class="muted">Niveles:</span><b>${vs.length}</b>
+        <button class="btn sm" data-a="insniv" data-id="${it.id}" data-d="-1" ${vs.length <= 2 ? 'disabled' : ''} aria-label="Quitar un nivel">−</button><button class="btn sm" data-a="insniv" data-id="${it.id}" data-d="1" ${vs.length >= 6 ? 'disabled' : ''} aria-label="Añadir un nivel">+</button>
+        <button class="btn sm ghost" data-a="insnivrep" data-id="${it.id}">Repartir de 0 a 10</button>
+        ${it.vals ? `<button class="btn sm ghost" data-a="insnivdef" data-id="${it.id}">Usar los del grupo</button>` : '<span class="tiny muted">(los del grupo)</span>'}</div>
+      <div class="rubdesc">${vs.map((v, l) => `<label class="f"><span class="row" style="gap:4px;flex-wrap:nowrap">Nivel ${l} =<input type="text" inputmode="decimal" class="pct" value="${esc(String(v).replace('.', ','))}" data-f="insitv" data-id="${it.id}" data-l="${l}" aria-label="Nota del nivel ${l}"></span><textarea rows="2" data-f="insit" data-id="${it.id}" data-k="d${l}" placeholder="Descriptor (opcional)">${esc(it.desc?.[l] || '')}</textarea></label>`).join('')}</div>`; })()}</div>`).join('')}
     <div class="row between"><button class="btn sm" data-a="insitadd">+ Añadir ítem</button><span class="small ${Math.abs(sumIt - 100) > .01 && d.items.length ? 'warnc' : 'muted'}">${d.items.length ? `Pesos: suman ${nf(sumIt)} %` : ''}</span></div></div>`;
   const recEv = String(d.recupera || '').startsWith('ev:');
   const cands = cal.instr.filter(i => i.id !== d.id && !i.recupera);
@@ -4277,7 +4293,7 @@ function insModal() {
       <label class="f">Fecha<input type="date" value="${esc(d.fecha || '')}" data-f="insd" data-k="fecha"></label>
       ${n?.reparto === 'mano' ? `<label class="f">Peso dentro de su categoría<input type="number" min="0" value="${esc(String(d.peso ?? 1))}" data-f="insd" data-k="peso"></label>` : ''}</div>
     ${recBlock}
-    <div><div class="label" style="margin-bottom:6px">Cómo se pone la nota</div><div class="seg">${[['directa', 'Nota directa'], ['rubrica', 'Con rúbrica (niveles 1–4)']].map(([v, t]) => `<button data-a="insmodo" data-v="${v}" aria-pressed="${d.modo === v}">${t}</button>`).join('')}</div></div>
+    <div><div class="label" style="margin-bottom:6px">Cómo se pone la nota</div><div class="seg">${[['directa', 'Nota directa'], ['rubrica', 'Con rúbrica (por niveles)']].map(([v, t]) => `<button data-a="insmodo" data-v="${v}" aria-pressed="${d.modo === v}">${t}</button>`).join('')}</div></div>
     ${d.modo === 'rubrica' ? rubBlock : critBlock}
     ${d.confirmDel ? `<div class="alert bad"><span class="grow">Se borrará el instrumento con todas sus notas.</span><button class="btn sm danger" data-a="insdelok">Borrar</button><button class="btn sm" data-a="insdelno">Cancelar</button></div>` : ''}
     <div class="row between"><div class="row"><button class="btn primary" data-a="inssave">Guardar</button><button class="btn" data-a="close">Cancelar</button></div>${!d.nuevo ? `<button class="btn ghost danger" data-a="insdel">Eliminar</button>` : ''}</div></div>`, 'wide');
@@ -4298,7 +4314,7 @@ function rubModal() {
   remodal(`<div class="row between"><div><div class="label">${esc(ins.nombre)}</div><h2 style="margin:2px 0 0">${esc(a.nombre)}</h2></div><div class="rubnota${lowC(r?.g)}">${v === 'NP' || v === 'EX' ? v : r ? nf(r.g, 2) : '—'}</div></div>
     <div class="row between" style="margin:10px 0"><button class="btn sm" data-a="rubnav" data-d="-1" ${idx === 0 ? 'disabled' : ''}>‹ Anterior</button><span class="small muted">${idx + 1} de ${g.alumnos.length}</span><button class="btn sm" data-a="rubnav" data-d="1" ${idx === g.alumnos.length - 1 ? 'disabled' : ''}>Siguiente ›</button></div>
     ${!(ins.items || []).length ? `<p class="empty">Esta rúbrica no tiene ítems. <a href="#" data-a="calins" data-id="${ins.id}">Edítala</a> para añadirlos.</p>` : `<div class="stack" style="gap:10px">${ins.items.map(it => `<div class="rubrow"><div class="rubit"><b>${esc(it.texto || 'Ítem')}</b><span class="tiny muted">${nf(Number(it.peso) || 0)} %${(it.crit || []).length ? ' · ' + it.crit.map(esc).join(', ') : ''}</span></div>
-      <div class="rublv">${[1, 2, 3, 4].map(l => `<button class="lvl ${sel[it.id] === l ? 'on' : ''}" data-a="rublvl" data-it="${it.id}" data-l="${l}"><b>${l} <span style="font-weight:400">· ${nf(cal.niveles[l - 1], 2)}</span></b>${esc(it.desc?.[l - 1] || '')}</button>`).join('')}</div></div>`).join('')}</div>`}
+      <div class="rublv">${nivelesItem(cal, it).map((nv, l) => `<button class="lvl ${sel[it.id] === l ? 'on' : ''}" data-a="rublvl" data-it="${it.id}" data-l="${l}"><b>${l} <span style="font-weight:400">· ${nf(nv, 2)}</span></b>${esc(it.desc?.[l] || '')}</button>`).join('')}</div></div>`).join('')}</div>`}
     <div class="row between" style="margin-top:14px"><div class="row"><button class="btn sm ${v === 'NP' ? 'primary' : ''}" data-a="rubest" data-v="NP">NP</button><button class="btn sm ${v === 'EX' ? 'primary' : ''}" data-a="rubest" data-v="EX">Exento</button><button class="btn sm ghost" data-a="rubest" data-v="">Borrar</button></div>
       <div class="row"><button class="btn sm ghost" data-a="calins" data-id="${ins.id}">Editar rúbrica</button><button class="btn primary" data-a="close">Listo</button></div></div>`, 'wide');
 }
@@ -4446,6 +4462,10 @@ Object.assign(A, {
   insrecmodo(el) { UI.insD.recModo = el.dataset.v; insModal(); },
   insmodo(el) { const d = UI.insD; d.modo = el.dataset.v; if (d.modo === 'rubrica' && !d.items.length) d.items = [nuevoItem(), nuevoItem(), nuevoItem(), nuevoItem()]; insModal(); },
   inscdel(el) { const d = UI.insD; d.crit = d.crit.filter(x => x.c !== el.dataset.c); insModal(); },
+  insniv(el) { const cal = calC(); const it = UI.insD.items.find(i => i.id === el.dataset.id); if (!it) return; const n = nivelesItem(cal, it).length + Number(el.dataset.d); if (n < 2 || n > 6) return;
+    it.vals = repartirNiv(n); const d = it.desc || []; it.desc = Array.from({ length: n }, (_, k) => d[k] || ''); insModal(); },
+  insnivrep(el) { const cal = calC(); const it = UI.insD.items.find(i => i.id === el.dataset.id); if (!it) return; it.vals = repartirNiv(nivelesItem(cal, it).length); insModal(); },
+  insnivdef(el) { const cal = calC(); const it = UI.insD.items.find(i => i.id === el.dataset.id); if (!it) return; delete it.vals; const d = it.desc || []; it.desc = cal.niveles.map((_, k) => d[k] || ''); insModal(); },
   insitadd() { UI.insD.items.push(nuevoItem()); insModal(); },
   insitdel(el) { UI.insD.items = UI.insD.items.filter(i => i.id !== el.dataset.id); insModal(); },
   inssave() { const d = UI.insD; const g = calG(); const cal = calDe(g);
@@ -4456,8 +4476,12 @@ Object.assign(A, {
     const data = { id: d.id, nombre: d.nombre.trim(), nodo: d.nodo, ev: d.ev, fecha: d.fecha || '', modo: d.modo, peso: Number(d.peso ?? 1), crit: d.crit, items: d.items, notas: d.notas || {}, rub: d.rub || {}, ejemplo: d.ejemplo,
       recupera: d.recupera || '', recModo: d.recModo || 'sustituye', recTope: tope === '' ? '' : Number(tope) };
     if (data.recupera && cal.instr.some(i => i.recupera === data.id)) { toast('Otros instrumentos recuperan a este: no puede ser también una recuperación'); return; }
-    const ex = cal.instr.find(i => i.id === d.id);
-    if (ex) { data.notas = ex.notas || {}; data.rub = ex.rub || {}; Object.assign(ex, data); } else cal.instr.push(data);
+    const ex = cal.instr.find(i => i.id === d.id); let quitadas = 0;
+    if (ex) { data.notas = ex.notas || {}; data.rub = ex.rub || {};
+      // valoraciones en niveles que ya no existen (se han quitado niveles a un ítem)
+      Object.values(data.rub).forEach(sel => (data.items || []).forEach(it => { if (typeof sel[it.id] === 'number' && sel[it.id] >= nivelesItem(cal, it).length) { delete sel[it.id]; quitadas++; } }));
+      Object.assign(ex, data); } else cal.instr.push(data);
+    if (quitadas) setTimeout(() => toast(`${quitadas} valoraci${quitadas === 1 ? 'ón estaba' : 'ones estaban'} en niveles que has quitado: vuelve a corregir${quitadas === 1 ? 'la' : 'las'}`), 2300);
     touchCal(g.id); UI.insD = null; closeModal(); if (d.ev !== UI.calEv && UI.calEv !== 'final') UI.calEv = d.ev; calRe(); toast(ex ? 'Instrumento guardado' : 'Instrumento creado'); },
   insdel() { UI.insD.confirmDel = true; insModal(); },
   insdelno() { UI.insD.confirmDel = false; insModal(); },
@@ -4491,11 +4515,11 @@ Object.assign(A, {
   calplsave() { const nm = $('#cal-pl-n').value.trim(); if (!nm) { $('#cal-pl-n').focus(); return; } const cal = calC(); S.config.plantillasCal = S.config.plantillasCal || [];
     S.config.plantillasCal.push({ id: uid(), nombre: nm, arbol: clonarArbol(cal.arbol), niveles: [...cal.niveles], pesosPorEval: !!cal.pesosPorEval }); touch('config'); toast('Plantilla guardada'); calRe(); },
   calplapply() { const p = (S.config.plantillasCal || []).find(x => x.id === $('#cal-pl-s').value); if (!p) return; const cal = calC();
-    const go = () => { aplicarArbol(cal, p.arbol); cal.niveles = [...(p.niveles || NIVELES_DEF)]; cal.pesosPorEval = !!p.pesosPorEval; touchCal(UI.calG); toast('Plantilla aplicada'); };
+    const go = () => { aplicarArbol(cal, p.arbol); cal.niveles = fixNiv(p.niveles); cal.pesosPorEval = !!p.pesosPorEval; touchCal(UI.calG); toast('Plantilla aplicada'); };
     if (cal.instr.length) calConfirm('Se sustituyen las categorías y los pesos. Los instrumentos se mueven a la categoría con el mismo nombre (o a la primera).', go); else { go(); calRe(); } },
   calpldel() { const id = $('#cal-pl-s').value; S.config.plantillasCal = (S.config.plantillasCal || []).filter(x => x.id !== id); touch('config'); calRe(); },
   calcopy() { const src = S.cal[$('#cal-cp-s').value]; if (!src) return; const cal = calC();
-    const go = () => { aplicarArbol(cal, src.arbol); cal.niveles = [...(src.niveles || NIVELES_DEF)]; cal.pesosPorEval = !!src.pesosPorEval; cal.evalPesos = { ...(src.evalPesos || {}) }; touchCal(UI.calG); toast('Configuración copiada'); };
+    const go = () => { aplicarArbol(cal, src.arbol); cal.niveles = fixNiv(src.niveles); cal.pesosPorEval = !!src.pesosPorEval; cal.evalPesos = { ...(src.evalPesos || {}) }; touchCal(UI.calG); toast('Configuración copiada'); };
     if (cal.instr.length) calConfirm('Se sustituyen las categorías y los pesos por los del otro grupo. Los instrumentos se mueven a la categoría con el mismo nombre (o a la primera).', go); else { go(); calRe(); } },
 });
 Object.assign(Fd, {
@@ -4524,9 +4548,11 @@ Object.assign(Fd, {
   calniv(el) { const cal = calC(); const v = Number(el.value); if (Number.isFinite(v)) { cal.niveles[Number(el.dataset.i)] = v; touchCal(UI.calG); } },
   insd(el) { const d = UI.insD; if (!d) return; d[el.dataset.k] = el.value; if (el.tagName === 'SELECT') insModal(); },
   inscp(el) { const x = UI.insD.crit.find(c => c.c === el.dataset.c); if (x) x.p = Number(el.value) || 0; },
+  insitv(el) { const cal = calC(); const it = UI.insD.items.find(i => i.id === el.dataset.id); if (!it) return; const v = Number(el.value.replace(',', '.')); if (el.value.trim() === '' || !Number.isFinite(v) || v < 0 || v > 10) return;
+    if (!it.vals) it.vals = [...cal.niveles]; it.vals[Number(el.dataset.l)] = v; },
   insit(el) { const it = UI.insD.items.find(i => i.id === el.dataset.id); if (!it) return; const k = el.dataset.k; if (k[0] === 'd' && k.length === 2) { it.desc = it.desc || ['', '', '', '']; it.desc[Number(k[1])] = el.value; } else if (k === 'peso') it.peso = Number(el.value) || 0; else it[k] = el.value; },
-  inscopy(el) { if (!el.value) return; const [gid, id] = el.value.split('|'); const src = (S.cal[gid]?.instr || []).find(i => i.id === id); if (!src) return;
-    UI.insD.items = JSON.parse(JSON.stringify(src.items)).map(i => ({ ...i, id: uid() })); toast('Rúbrica copiada'); insModal(); },
+  inscopy(el) { if (!el.value) return; const [gid, id] = el.value.split('|'); if (grupo(gid)) calDe(grupo(gid)); const src = (S.cal[gid]?.instr || []).find(i => i.id === id); if (!src) return;
+    const srcCal = S.cal[gid]; UI.insD.items = JSON.parse(JSON.stringify(src.items)).map(i => ({ ...i, id: uid(), v2: true, vals: i.vals || (srcCal && JSON.stringify(srcCal.niveles) !== JSON.stringify(calC().niveles) ? [...srcCal.niveles] : undefined) })); toast('Rúbrica copiada'); insModal(); },
   pickchk(el) { const c = el.dataset.c; const p = UI.pick; if (!p) return;
     if (p.tipo === 'nodo') { const cal = calC(); const n = nodoPorId(cal, p.id); n.crit = el.checked ? [...new Set([...(n.crit || []), c])] : (n.crit || []).filter(x => x !== c); touchCal(UI.calG); UI.calDirty = true; return; }
     const d = UI.insD;
@@ -4559,7 +4585,7 @@ function ejemploCal(G) {
     const cal = calDe(g); const cr = CR[cal.curr]; if (!cr) return;
     const nEx = cal.arbol[0], nTr = cal.arbol[1];
     const ex = { id: uid(), nombre: ['Examen UD 1', 'Examen UD 2', 'Examen bloque A'][gi], nodo: nEx.id, ev, fecha: '', modo: 'directa', peso: 1, crit: cr.ex.map(([c, p]) => ({ c, p })), items: [], notas: {}, rub: {}, ejemplo: true };
-    const items = [['Planteamiento e hipótesis', 25], ['Procedimiento y datos', 25], ['Conclusiones', 30], ['Presentación y lenguaje científico', 20]].map(([t, p], k) => ({ id: uid(), texto: t, peso: p, crit: [cr.it[k]], desc: ['No lo hace o casi nada', 'Lo hace con errores importantes', 'Lo hace bien con algún fallo', 'Lo hace muy bien y completo'] }));
+    const items = [['Planteamiento e hipótesis', 25], ['Procedimiento y datos', 25], ['Conclusiones', 30], ['Presentación y lenguaje científico', 20]].map(([t, p], k) => ({ id: uid(), texto: t, peso: p, crit: [cr.it[k]], desc: ['No lo presenta', 'No lo hace o casi nada', 'Lo hace con errores importantes', 'Lo hace bien con algún fallo', 'Lo hace muy bien y completo'], v2: true }));
     const tr = { id: uid(), nombre: 'Informe de laboratorio', nodo: nTr.id, ev, fecha: '', modo: 'rubrica', peso: 1, crit: [], items, notas: {}, rub: {}, ejemplo: true };
     g.alumnos.forEach((a, j) => { const s = (j * 37 + gi * 11) % 13; ex.notas[a.id] = j === 4 ? 'NP' : Math.round((3.5 + s * 0.48) * 4) / 4; if (j !== 2) { tr.rub[a.id] = {}; items.forEach((it, k) => tr.rub[a.id][it.id] = 1 + ((j + k * 2 + gi) % 4)); } });
     cal.instr.push(ex, tr); touchCal(g.id);
