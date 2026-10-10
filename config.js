@@ -12,7 +12,7 @@ window.BIOSOFIA_CONFIG = {
 
   /* Microsoft Entra (portal.azure.com) → Registros de aplicaciones →
      Id. de aplicación (cliente). Plataforma «Aplicación de página única (SPA)». */
-  microsoftClientId: '',
+  microsoftClientId: '2a794177-f4f4-45cd-99c4-39810be81a30',
 
   /* 'common' admite cuentas personales y de centros (@edu.gva.es).
      Si solo quieres cuentas de la Conselleria, pon aquí el id del inquilino. */
