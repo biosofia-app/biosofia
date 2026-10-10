@@ -3,7 +3,7 @@
    - Sirve los archivos subidos (_blob/<id>) desde Drive u OneDrive con el
      token de la página, y los guarda para verlos sin conexión. */
 'use strict';
-const V = 'biosofia-v8';
+const V = 'biosofia-v9';
 const BLOBS = 'biosofia-blobs';
 const SHELL = ['./', 'index.html', 'nube.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'privacidad.html'];
 

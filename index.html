@@ -5,7 +5,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<script>try{if((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone)document.documentElement.classList.add('pwa')}catch(e){}</script><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BIOSOFÍA"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="config.js"></script>
 <script src="nube.js"></script>
@@ -47,7 +47,7 @@ button,input,select,textarea{font:inherit; color:inherit}
 .topbar{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--surface); border-bottom:1px solid var(--line)}
 .topbar-in{max-width:1240px; margin:0 auto; padding-inline:16px; display:flex; align-items:center; gap:16px; min-height:54px}
 .brand{font-family:var(--font-d); font-weight:700; font-size:1.05rem; display:flex; align-items:center; gap:8px; white-space:nowrap}
-.brand-mark{width:22px; height:22px; border-radius:6px; background:url(icon-192.png) center/cover no-repeat; display:inline-block}
+.brand-mark{width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,var(--g1),var(--g2)); display:inline-block}
 .nav{display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; flex:1; min-width:0}
 .nav::-webkit-scrollbar{display:none}
 .nav button{border:0; background:none; padding:8px 11px; border-radius:8px; color:var(--ink-2); cursor:pointer; white-space:nowrap; font-weight:700; font-size:.92rem}
@@ -431,6 +431,16 @@ button, a, input, select, textarea, label{touch-action:manipulation}
 }
 @media (max-width:760px) and (prefers-reduced-motion: no-preference){ .modal{animation:sube .18s ease-out} @keyframes sube{from{transform:translateY(24px); opacity:.6}} }
 @media (display-mode: standalone){ .topbar{padding-top:env(safe-area-inset-top,0px)} }
+/* App instalada en el móvil: la página no se desplaza, solo el contenido (#main).
+   Así la barra inferior no es «fixed» y iOS no puede dejarla a media pantalla al hacer scroll. */
+@media (max-width:760px){
+  html.pwa{padding:0!important; height:100%; overflow:hidden}
+  html.pwa body{height:100%; overflow:hidden; display:flex; flex-direction:column}
+  html.pwa .topbar{position:relative; top:0; flex:none; padding-top:env(safe-area-inset-top,0px)}
+  html.pwa .banner{flex:none}
+  html.pwa #main{flex:1 1 auto; min-height:0; width:100%; box-sizing:border-box; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding-bottom:28px}
+  html.pwa .tabbar{position:relative; bottom:auto; flex:none}
+}
 </style>
 
 </head><body>
@@ -1914,7 +1924,7 @@ const numPre = a => a.num ? `<span class="muted">${a.num}.</span> ` : '';
 const ordenarAlumnos = g => g.alumnos.sort((x, y) => ((x.num || Infinity) - (y.num || Infinity) || 0) || (x.apellidos || '').localeCompare(y.apellidos || '', 'es', { sensitivity: 'base' }) || (x.pila || '').localeCompare(y.pila || '', 'es', { sensitivity: 'base' }));
 function normMat(d) { const m = d && Array.isArray(d.asigs) ? d : { asigs: [] }; m.asigs.forEach(a => { a.carpetas = a.carpetas || []; a.archivos = a.archivos || []; }); return m; }
 function hydrate(docs) {
-  S = { config: Object.assign(DEFAULT_CONFIG(), docs.config || {}), grupos: docs.grupos?.list || [], agenda: docs.agenda?.list || [], ideas: docs.ideas?.list || [], pendientes: docs.pendientes?.list || [], pendgrupo: docs.pendgrupo?.map || {}, planes: {}, regs: {}, cal: {}, materiales: normMat(docs.materiales), libros: {} };
+  S = { config: Object.assign(DEFAULT_CONFIG(), docs.config || {}), grupos: docs.grupos?.list || [], agenda: docs.agenda?.list || [], ideas: docs.ideas?.list || [], pendientes: docs.pendientes?.list || [], pendgrupo: docs.pendgrupo?.map || {}, planes: {}, regs: {}, cal: {}, materiales: normMat(docs.materiales), libros: {}, plantillas: docs.plantillas?.list || [] };
   S.config.pesos = Object.assign(DEFAULT_CONFIG().pesos, S.config.pesos || {});
   S.grupos.forEach(g => { g.alumnos.forEach(normAlumno); ordenarAlumnos(g); });
   Object.keys(docs).forEach(id => {
@@ -1929,6 +1939,7 @@ function docData(id) {
   if (['grupos', 'agenda', 'ideas', 'pendientes'].includes(id)) return { list: S[id] };
   if (id === 'pendgrupo') return { map: S.pendgrupo };
   if (id === 'materiales') return S.materiales;
+  if (id === 'plantillas') return { list: S.plantillas || [] };
   if (id.startsWith('libro_')) return S.libros[id.slice(6)] || {};
   if (id.startsWith('cal_')) return S.cal[id.slice(4)] || {};
   const [kind, wk] = [id.slice(0, id.indexOf('_')), id.slice(id.indexOf('_') + 1)];
@@ -1963,7 +1974,7 @@ async function flush() {
 function setSaveState(t, err) { const el = $('#savestate'); el.textContent = t; el.classList.toggle('err', !!err); }
 function showBanner(t) { const b = $('#banner'); b.innerHTML = `<div>${esc(t)}</div>`; b.hidden = false; }
 function allDocIds() {
-  const ids = new Set(['config', 'grupos', 'agenda', 'ideas', 'pendientes', 'pendgrupo', 'materiales']);
+  const ids = new Set(['config', 'grupos', 'agenda', 'ideas', 'pendientes', 'pendgrupo', 'materiales']); if ((S.plantillas || []).length) ids.add('plantillas');
   Object.keys(S.planes).forEach(k => ids.add('plan_' + mondayOf(k.split('|')[1])));
   Object.keys(S.regs).forEach(k => ids.add('reg_' + mondayOf(k.split('|')[1])));
   Object.keys(S.cal || {}).forEach(g => ids.add('cal_' + g));
@@ -2172,10 +2183,14 @@ function render() {
     : v === 'mas' ? `<button data-a="tbmas" ${enMas ? 'aria-current="page"' : ''}>${ic}${t}</button>`
     : `<button data-a="go" data-v="${v}" ${navView === v ? 'aria-current="page"' : ''}>${ic}${t}</button>`).join('');
   const fn = VIEWS[UI.view] || VIEWS.hoy;
-  const y = window.scrollY;
+  const y = scrollY_();
   $('#main').innerHTML = fn();
-  if (UI.keepScroll) { window.scrollTo(0, y); UI.keepScroll = false; }
+  if (UI.keepScroll) { scrollA(y); UI.keepScroll = false; }
 }
+/* desplazamiento: en la app instalada en el móvil se mueve #main; si no, la ventana */
+function scroller() { const m = $('#main'); return m && document.documentElement.classList.contains('pwa') && getComputedStyle(m).overflowY === 'auto' ? m : null; }
+function scrollY_() { const m = scroller(); return m ? m.scrollTop : window.scrollY; }
+function scrollA(y) { const m = scroller(); if (m) m.scrollTop = y; else window.scrollTo(0, y); }
 const gchip = g => g ? `<span class="gchip"><span class="sw" style="background:var(--${g.color || 'g1'})"></span>${esc(g.nombre)}</span>` : '';
 const pill = (c, t) => `<span class="pill ${c}">${esc(t)}</span>`;
 
@@ -2247,7 +2262,7 @@ VIEWS.plan = () => {
     title = cap(MESES[mes]) + ' ' + p0.getFullYear();
     const gs = S.grupos; const otrosTipos = UI.qOtros ? [...new Set(S.config.horario.filter(h => h.tipo && OTROS[h.tipo]).map(h => h.tipo))] : [];
     const semanas = []; for (let w = mondayOf(first); w <= last; w = addDays(w, 7)) semanas.push(w);
-    body = `<div class="row" style="margin-bottom:10px"><label class="check small"><input type="checkbox" data-f="qotros" ${UI.qOtros ? 'checked' : ''}>Mostrar también guardias, AE y otras horas</label><span class="small muted">Escribe directamente el título de cada sesión; se guarda solo.</span></div>
+    body = `<div class="row" style="margin-bottom:10px"><button class="btn sm" data-a="plantillas">📋 Plantillas de planificación</button><label class="check small"><input type="checkbox" data-f="qotros" ${UI.qOtros ? 'checked' : ''}>Mostrar también guardias, AE y otras horas</label><span class="small muted">Escribe directamente el título de cada sesión; se guarda solo.</span></div>
     <div class="stack" style="gap:18px">${semanas.map(w => `<div class="wk-wrap"><table class="qp"><tr><th></th>${gs.map(g => `<th><span class="gchip"><span class="sw" style="background:var(--${g.color || 'g1'})"></span>${esc(g.nombre)}</span></th>`).join('')}${otrosTipos.map(t => `<th>${esc(OTROS_C[t])}</th>`).join('')}</tr>
       ${[0, 1, 2, 3, 4].map(i => { const x = addDays(w, i); const fest = festivoDe(x); const fuera = parseD(x).getMonth() !== mes;
         const dl = `<td class="qd ${x === hoy ? 'today' : ''}">${'LMXJV'[i]} ${parseD(x).getDate()}</td>`;
@@ -2371,7 +2386,7 @@ VIEWS.grupo = () => {
       <div><div class="label" style="margin-bottom:6px">Idioma de la asignatura</div><div class="seg">${Object.entries(IDIOMAS).map(([k, t]) => `<button data-a="gidioma" data-v="${k}" aria-pressed="${(g.idioma || 'es') === k}">${t}</button>`).join('')}</div>
       <p class="tiny muted" style="margin:6px 0 0">El menú de la app sigue en castellano. Lo que la app prepare para el alumnado (pantalla de proyección, resumen de la sesión anterior) saldrá en este idioma.</p></div>
       <div><div class="label" style="margin-bottom:6px">Color</div><div class="row">${GCOLORS.map(([c, n]) => `<label class="check small"><input type="radio" name="gcolor" data-f="gcolor" value="${c}" ${g.color === c ? 'checked' : ''}><span class="dot" style="background:var(--${c})"></span>${n}${S.grupos.some(x => x.id !== g.id && x.color === c) ? ' <span class="tiny muted">(en uso)</span>' : ''}</label>`).join('')}</div></div>
-      <hr>${UI.confirm === 'delgrupo' ? `<div class="alert bad"><span class="grow">Se borrarán el grupo, su horario, sus sesiones planificadas y sus registros. No se puede deshacer.</span><button class="btn sm danger" data-a="delgrupo-ok">Borrar</button><button class="btn sm" data-a="cancel">Cancelar</button></div>` : `<button class="btn danger" data-a="confirm" data-c="delgrupo" style="align-self:flex-start">Borrar grupo</button>`}</div>`;
+      <hr>${UI.confirm === 'delgrupo' ? `<div class="alert bad"><span class="grow">Se borrarán el grupo, su horario, sus sesiones planificadas, sus registros y sus calificaciones. No se puede deshacer. Si quieres reutilizar la planificación el curso que viene, guárdala antes como plantilla (Planificación › Rápida › 📋 Plantillas).</span><button class="btn sm danger" data-a="delgrupo-ok">Borrar</button><button class="btn sm" data-a="cancel">Cancelar</button></div>` : `<button class="btn danger" data-a="confirm" data-c="delgrupo" style="align-self:flex-start">Borrar grupo</button>`}</div>`;
   }
   return `<div class="page-head"><div><a href="#" data-a="go" data-v="grupos" class="small">‹ Grupos</a><h1 style="margin-top:4px">${gchip(g)}</h1><div class="sub">${esc(g.materia || '')}${g.nivel ? ' · ' + esc(g.nivel) : ''} · ${IDIOMAS[g.idioma || 'es']} · ${g.alumnos.length} alumnos</div></div>${esTutoria(g) ? '' : `<button class="btn" data-a="calgo" data-g="${g.id}">Calificaciones ›</button>`}</div>
     <div class="tabs" role="tablist">${[['alumnado', 'Alumnado'], ['plano', 'Plano de clase'], ['seguimiento', 'Seguimiento'], ...(esTutoria(g) ? [['tutoria', 'Tutoría']] : []), ['datos', 'Datos del grupo']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="gtab" data-v="${v}">${tt}</button>`).join('')}</div>${body}`;
@@ -2650,7 +2665,8 @@ function archivosEditor(key, list, addLabel) {
 }
 
 function tabPreparar(key, g, f) {
-  const p = plan(key); const dur = tmin(f.fin) - tmin(f.inicio); const sum = (p.bloques || []).reduce((s, b) => s + (Number(b.min) || 0), 0);
+  const p = plan(key);
+  const notaAnt = p.notaAnterior ? `<div class="alert info" style="margin-bottom:10px"><span class="grow">📋 <b>Nota del curso anterior</b> (plantilla «${esc(p.plantillaDe || '')}»): ${esc(p.notaAnterior)}</span><button class="iconbtn" data-a="notaantx" aria-label="Quitar la nota">✕</button></div>` : ''; const dur = tmin(f.fin) - tmin(f.inicio); const sum = (p.bloques || []).reduce((s, b) => s + (Number(b.min) || 0), 0);
   const ideas = ideasPara(key); const sg = p.sug || {};
 
   const sEsquema = sg.esquema ? `<div class="sugbox"><div class="label">Esquema sugerido</div><pre id="sug-esquema" class="sugpre">${esc(sg.esquema)}</pre>
@@ -2676,7 +2692,7 @@ function tabPreparar(key, g, f) {
         <p class="tiny muted" style="margin:4px 0 0">Comprueba que la noticia sigue siendo actual antes de usarla.</p></div>` : ''}
     </div>` : '';
 
-  return `<div class="cols"><div class="stack">
+  return `${notaAnt}<div class="cols"><div class="stack">
     <div class="panel stack"><div class="fgrid"><label class="f">Título<input type="text" data-f="plan" data-k="titulo" value="${esc(p.titulo)}"></label>
       <label class="f">Unidad<input type="text" data-f="plan" data-k="unidad" value="${esc(p.unidad)}"></label></div>
       <label class="f">Temas<input type="text" data-f="plan" data-k="etiquetas" value="${esc(p.etiquetas)}"></label>
@@ -3207,13 +3223,13 @@ const A = {
     const [t, ...rest] = x.split('\n'); S.ideas.push({ id: uid(), creada: new Date().toISOString(), usos: [], titulo: rest.length ? t.trim() : '', texto: rest.length ? rest.join('\n').trim() : x, apartado: '', url: (x.match(/https?:\/\/\S+/) || [''])[0], tipo: '',
       etiquetas: $('#qi-e').value.split(',').map(s => s.trim()).filter(Boolean), ambito: 'todos', grupoId: null, nivel: null });
     touch('ideas'); closeModal(); toast('Idea guardada (está en Ideas › Sin clasificar)'); UI.keepScroll = true; render(); },
-  go(el) { UI.view = el.dataset.v; if (el.dataset.g) { UI.grupoId = el.dataset.g; UI.grupoTab = el.dataset.gt || 'alumnado'; } UI.confirm = null; UI.editIdea = null; render(); window.scrollTo(0, 0); },
+  go(el) { UI.view = el.dataset.v; if (el.dataset.g) { UI.grupoId = el.dataset.g; UI.grupoTab = el.dataset.gt || 'alumnado'; } UI.confirm = null; UI.editIdea = null; render(); scrollA(0); },
   dia(el) { const d = +el.dataset.d; UI.date = d === 0 ? todayStr() : addDays(UI.date, d); if (d) { let g = 0; while (dow(UI.date) > 5 && g++ < 3) UI.date = addDays(UI.date, d); } render(); },
   pmode(el) { UI.planMode = el.dataset.v; render(); },
   pnav(el) { const d = +el.dataset.d; if (!d) UI.planDate = todayStr(); else if (UI.planMode === 'semana') UI.planDate = addDays(UI.planDate, 7 * d); else if (UI.planMode === 'rapida') { const x = parseD(UI.planDate); UI.planDate = ymd(new Date(x.getFullYear(), x.getMonth() + d, 1)); } else if (UI.planMode === 'dia') { UI.planDate = addDays(UI.planDate, d); let g = 0; while (dow(UI.planDate) > 5 && g++ < 3) UI.planDate = addDays(UI.planDate, d); } else { const x = parseD(UI.planDate); UI.planDate = ymd(new Date(x.getFullYear(), x.getMonth() + d, 1)); } render(); },
   verdia(el) { UI.planMode = 'dia'; UI.planDate = el.dataset.d; render(); },
   sesion(el) { closeModal(); UI.sesion = el.dataset.k; UI.view = 'sesion'; const { fecha } = parseKey(UI.sesion); const hoy = todayStr();
-    UI.sesTab = el.dataset.tab || (fecha === hoy ? 'inicio' : fecha < hoy ? 'preparar' : 'preparar'); UI.liveMode = 'capa'; render(); window.scrollTo(0, 0); },
+    UI.sesTab = el.dataset.tab || (fecha === hoy ? 'inicio' : fecha < hoy ? 'preparar' : 'preparar'); UI.liveMode = 'capa'; render(); scrollA(0); },
   stab(el) { UI.sesTab = el.dataset.v; render(); },
   gtab(el) { UI.grupoTab = el.dataset.v; UI.confirm = null; render(); },
   vertodas() { UI.verTodas = !UI.verTodas; render(); },
@@ -3287,7 +3303,7 @@ const A = {
   bifijar(el) { const i = S.ideas.find(x => x.id === el.dataset.id); if (!i || !UI.bi) return; const s = document.getElementById('bi-apt-' + i.id); fijarIdea(UI.bi.key, i, s?.value || apartadoIdea(i), true); biModal(); },
   bidesfijar(el) { if (!UI.bi) return; desfijarIdea(UI.bi.key, el.dataset.id, true); biModal(); },
   biapt(el) { UI.bi.apt = el.dataset.v; biModal(); },
-  biir() { closeModal(); UI.view = 'ideas'; render(); window.scrollTo(0, 0); },
+  biir() { closeModal(); UI.view = 'ideas'; render(); scrollA(0); },
   ocultaridea(el) { const p = plan(UI.sesion); p.ideasOcultas = [...(p.ideasOcultas || []), el.dataset.id]; touchPlan(UI.sesion); UI.keepScroll = true; render(); },
   desplazar() { modal(`<h2>Desplazar la planificación</h2><p>Esta sesión quedará marcada como <b>sin clase</b> y su contenido, y el de todas las siguientes de este grupo, pasará a la siguiente clase disponible.</p>
     <label class="f">Motivo<input type="text" id="desp-m" placeholder="Huelga, excursión, simulacro…"></label>
@@ -4475,8 +4491,8 @@ const calG = () => grupo(UI.calG); const calC = () => calDe(calG());
 const calRe = () => { UI.keepScroll = true; render(); };
 Object.assign(A, {
   calev(el) { UI.calEv = el.dataset.v; calRe(); },
-  caltab(el) { UI.calTab = el.dataset.v; closeModal(); render(); window.scrollTo(0, 0); },
-  calgo(el) { UI.calG = el.dataset.g; UI.view = 'cal'; UI.calTab = 'cuaderno'; render(); window.scrollTo(0, 0); },
+  caltab(el) { UI.calTab = el.dataset.v; closeModal(); render(); scrollA(0); },
+  calgo(el) { UI.calG = el.dataset.g; UI.view = 'cal'; UI.calTab = 'cuaderno'; render(); scrollA(0); },
   calnew(el) { abrirIns(calC(), null, el.dataset.nodo); },
   calins(el) { const ins = calC().instr.find(i => i.id === el.dataset.id); if (ins) abrirIns(calC(), ins); },
   insrecmodo(el) { UI.insD.recModo = el.dataset.v; insModal(); },
@@ -4626,7 +4642,7 @@ function ejemploCal(G) {
 
 Object.assign(A, {
   tutnav(el) { const g = grupo(UI.grupoId); const i = g.alumnos.findIndex(a => a.id === UI.tutAl); const n = g.alumnos[i + Number(el.dataset.d)]; if (n) { UI.tutAl = n.id; UI.keepScroll = true; render(); } },
-  tutsel(el) { UI.tutAl = el.dataset.id; render(); window.scrollTo(0, 0); },
+  tutsel(el) { UI.tutAl = el.dataset.id; render(); scrollA(0); },
   tutreu() { const g = grupo(UI.grupoId); tutDe(g, UI.tutAl).reu.push({ id: uid(), fecha: todayStr(), tipo: 'Presencial', con: 'Familia', tema: '' }); touch('grupos'); UI.keepScroll = true; render(); },
   tutreudel(el) { const g = grupo(UI.grupoId); const t = tutDe(g, UI.tutAl); t.reu = t.reu.filter(r => r.id !== el.dataset.id); touch('grupos'); UI.keepScroll = true; render(); },
 });
@@ -5086,15 +5102,15 @@ Object.assign(A, {
       <div class="row"><button class="btn primary" data-a="libnuevook">Crear</button><button class="btn" data-a="close">Cancelar</button></div></div>`); setTimeout(() => $('#lib-t')?.focus(), 30); },
   libnuevook() { const a = matA(); const t = $('#lib-t').value.trim() || 'Apuntes de ' + a.nombre;
     const b = { id: uid(), mat: a.id, titulo: t, subtitulo: '', autor: '', idioma: $('#lib-i').value, principal: !librosMat(a.id).length, unidades: [] }; b.unidades.push(nuevaUnidad(libL(b).primeraU, b.idioma));
-    S.libros[b.id] = b; touchLib(b); closeModal(); UI.libro = b.id; UI.libAp = b.unidades[0].apartados[0].id; UI.libModo = 'editar'; UI.view = 'libro'; render(); window.scrollTo(0, 0); },
-  libabrir(el) { UI.libro = el.dataset.id; UI.libAp = el.dataset.ap || null; UI.libModo = 'editar'; UI.libIns = null; UI.confirm = null; closeModal(); document.querySelector('.projector')?.remove(); UI.view = 'libro'; render(); window.scrollTo(0, 0); },
+    S.libros[b.id] = b; touchLib(b); closeModal(); UI.libro = b.id; UI.libAp = b.unidades[0].apartados[0].id; UI.libModo = 'editar'; UI.view = 'libro'; render(); scrollA(0); },
+  libabrir(el) { UI.libro = el.dataset.id; UI.libAp = el.dataset.ap || null; UI.libModo = 'editar'; UI.libIns = null; UI.confirm = null; closeModal(); document.querySelector('.projector')?.remove(); UI.view = 'libro'; render(); scrollA(0); },
   libpres(el) { presentar(el.dataset.id, el.dataset.ap || null); },
   presnav(el) { presNav(Number(el.dataset.d)); },
   libprincipal(el) { const b = libroDe(el.dataset.id); librosMat(b.mat).forEach(x => { if (x.principal !== (x === b)) { x.principal = x === b; touchLib(x); } }); libRe(); },
-  libap(el) { UI.libAp = el.dataset.id; UI.libIns = null; UI.confirm = null; render(); window.scrollTo(0, 0); },
+  libap(el) { UI.libAp = el.dataset.id; UI.libIns = null; UI.confirm = null; render(); scrollA(0); },
   libmodo(el) { UI.libModo = el.dataset.v; UI.libIns = null; libRe(); },
-  libaddu() { const b = libroDe(UI.libro); const u = nuevaUnidad('', b.idioma); b.unidades.push(u); touchLib(b); UI.libAp = u.apartados[0].id; UI.libModo = 'editar'; render(); window.scrollTo(0, 0); setTimeout(() => { const i = document.querySelector('[data-f="libu"]'); if (i) { i.focus(); i.select(); } }, 0); },
-  libadda(el) { const b = libroDe(UI.libro); const u = b.unidades.find(x => x.id === el.dataset.u); const a = nuevoApartado(libL(b).nuevoA); u.apartados.push(a); touchLib(b); UI.libAp = a.id; UI.libModo = 'editar'; render(); window.scrollTo(0, 0); setTimeout(() => { const i = document.querySelector('[data-f="liba"][data-k="titulo"]'); if (i) { i.focus(); i.select(); } }, 0); },
+  libaddu() { const b = libroDe(UI.libro); const u = nuevaUnidad('', b.idioma); b.unidades.push(u); touchLib(b); UI.libAp = u.apartados[0].id; UI.libModo = 'editar'; render(); scrollA(0); setTimeout(() => { const i = document.querySelector('[data-f="libu"]'); if (i) { i.focus(); i.select(); } }, 0); },
+  libadda(el) { const b = libroDe(UI.libro); const u = b.unidades.find(x => x.id === el.dataset.u); const a = nuevoApartado(libL(b).nuevoA); u.apartados.push(a); touchLib(b); UI.libAp = a.id; UI.libModo = 'editar'; render(); scrollA(0); setTimeout(() => { const i = document.querySelector('[data-f="liba"][data-k="titulo"]'); if (i) { i.focus(); i.select(); } }, 0); },
   libmovu(el) { const b = libroDe(UI.libro); const L = b.unidades; const i = L.findIndex(u => u.id === el.dataset.u); const j = i + Number(el.dataset.d); if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; touchLib(b); libRe(); },
   libmova(el) { const c = libCur(); if (!c) return; const L = c.u.apartados; const i = L.indexOf(c.a); const j = i + Number(el.dataset.d); if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; touchLib(c.b); libRe(); },
   libdela() { const c = libCur(); if (!c) return; c.u.apartados = c.u.apartados.filter(a => a !== c.a); if (!c.u.apartados.length) c.u.apartados.push(nuevoApartado(libL(c.b).intro)); touchLib(c.b); UI.libAp = c.u.apartados[0].id; UI.confirm = null; libRe(); toast('Apartado borrado'); },
@@ -5161,6 +5177,95 @@ function librosPanel(a) {
 }
 
 /* ---------- arranque ---------- */
+/* ===== PLANTILLAS DE PLANIFICACIÓN =====
+   Guardan la secuencia de sesiones de un grupo SIN fechas (sesión 1, 2, 3…) y se aplican
+   a otro grupo desde una fecha, sesión a sesión por sus clases, aunque el horario sea otro. */
+const PL_FUERA = ['cierre', 'deberesPara', 'resumenInicio', 'sug', 'sinClase', 'motivo', 'notaAnterior', 'plantillaDe'];
+const tienePlan = p => !!p && !p.sinClase && !!((p.titulo || '').trim() || (p.explicacion || '').trim() || (p.actividades || []).length || (p.bloques || []).length || (p.recursos || []).length || (p.eventos || []).length);
+function sesionParaPlantilla(p) {
+  const c = JSON.parse(JSON.stringify(p)); PL_FUERA.forEach(k => delete c[k]);
+  c.eventos = (c.eventos || []).filter(e => e.tipo === 'examen').map(e => ({ ...e, fecha: '' }));
+  if (!c.eventos.length) { delete c.eventos; delete c.tituloPrevio; }
+  const nota = [p.cierre?.nota, p.cierre?.dificultades ? 'Dificultades: ' + p.cierre.dificultades : ''].filter(x => (x || '').trim()).join(' · ');
+  if (nota) c.notaAnterior = nota;
+  return c;
+}
+function sesionesGuardables(gid, desde, hasta) { return ocurrencias(gid, desde, hasta).filter(o => !S.planes[o.key]?.sinClase); }
+function plDestino(gid, desde) { return ocurrencias(gid, desde, cursoRango()[1]).filter(o => !S.planes[o.key]?.sinClase); }
+function plantillasModal() {
+  const L = S.plantillas || []; const gs = S.grupos.filter(g => !esTutoria(g)); const [ini, fin] = cursoRango();
+  const g0 = gs.find(g => g.id === UI.plG) || gs[0]; UI.plG = g0?.id;
+  const occ = g0 ? sesionesGuardables(g0.id, ini, fin) : []; const conPlan = occ.filter(o => tienePlan(S.planes[o.key])).length;
+  const nomDef = g0 ? `${ASIG[g0.asig]?.nombre || g0.materia || g0.nombre} · ${S.config.curso || (ini || '').slice(0, 4)}` : '';
+  modal(`<h2>Plantillas de planificación</h2>
+    <p class="small muted" style="margin-top:0">Una plantilla guarda la planificación de un grupo <b>sin fechas</b>: sesión 1, sesión 2, sesión 3… Al aplicarla a otro grupo, la sesión 1 va a su primera clase, la 2 a la segunda, y así, <b>aunque el horario sea distinto</b>. Se saltan los festivos y las clases marcadas «no hay clase». Las plantillas se guardan aparte y no se borran al borrar el grupo.</p>
+    <div class="panel stack" style="margin:0 0 14px"><h3 style="margin:0">Guardar la planificación de un grupo</h3>
+      ${gs.length ? `<div class="fgrid"><label class="f">Grupo<select id="pl-g" data-f="plg">${gs.map(g => `<option value="${g.id}" ${g.id === g0.id ? 'selected' : ''}>${esc(g.nombre)}</option>`).join('')}</select></label>
+      <label class="f">Nombre de la plantilla<input type="text" id="pl-n" value="${esc(nomDef)}"></label></div>
+      <p class="small" style="margin:0">${occ.length} clases en el curso · <b>${conPlan}</b> con algo planificado. Se guardan en orden desde la primera sesión planificada hasta la última (también las vacías intermedias, para no descolocar la secuencia), sin las marcadas «no hay clase».</p>
+      <div class="row"><button class="btn primary" data-a="plguardar" ${conPlan ? '' : 'disabled'}>Guardar como plantilla</button></div>` : '<p class="empty">No tienes grupos.</p>'}</div>
+    <h3>Tus plantillas</h3>
+    ${L.length ? `<div class="list">${L.map(t => `<div class="li" style="flex-wrap:wrap;gap:8px"><div class="grow" style="min-width:180px"><b>${esc(t.nombre)}</b><div class="tiny muted">${t.sesiones.length} sesiones (${t.sesiones.filter(tienePlan).length} con contenido) · de ${esc(t.origen || '')} · ${fShort(t.creada.slice(0, 10))}</div></div>
+      ${UI.confirm === 'pldel' + t.id ? `<span class="small">¿Borrar la plantilla?</span><button class="btn sm danger" data-a="plborrarok" data-id="${t.id}">Borrar</button><button class="btn sm" data-a="plcancel">No</button>`
+        : `<button class="btn sm primary" data-a="plaplicar" data-id="${t.id}">Aplicar a un grupo…</button><button class="btn sm ghost" data-a="plborrar" data-id="${t.id}" aria-label="Borrar plantilla">🗑</button>`}</div>`).join('')}</div>` : '<p class="empty small">Todavía no has guardado ninguna.</p>'}
+    <div class="row" style="margin-top:14px"><button class="btn" data-a="close">Cerrar</button></div>`, true, 'wide');
+}
+function plAplicarModal() {
+  const t = (S.plantillas || []).find(x => x.id === UI.plT); if (!t) return plantillasModal();
+  const gs = S.grupos.filter(g => !esTutoria(g)).sort((a, b) => (b.asig === t.asig) - (a.asig === t.asig));
+  const D = UI.plA = Object.assign({ g: gs[0]?.id, desde: S.config.inicio || todayStr(), que: 'todo', modo: 'vacias' }, UI.plA || {});
+  if (!gs.some(g => g.id === D.g)) D.g = gs[0]?.id;
+  const dest = D.g ? plDestino(D.g, D.desde) : []; const n = Math.min(dest.length, t.sesiones.length);
+  const ocup = dest.slice(0, n).filter((o, i) => tienePlan(S.planes[o.key]) && tienePlan(t.sesiones[i])).length;
+  const ultima = n ? dest[n - 1].fecha : '';
+  const aviso = !dest.length ? `<div class="alert warn">Este grupo no tiene clases desde esa fecha. Revisa su horario en Ajustes.</div>`
+    : `<div class="alert ${t.sesiones.length > dest.length ? 'warn' : 'info'}"><span class="grow">La plantilla tiene <b>${t.sesiones.length}</b> sesiones y el grupo tiene <b>${dest.length}</b> clases desde el ${fShort(D.desde)} hasta fin de curso. Se ocupan ${n} clases (hasta el ${fShort(ultima)}).
+      ${t.sesiones.length > dest.length ? `<br><b>Faltan ${t.sesiones.length - dest.length} clases</b>: las últimas ${t.sesiones.length - dest.length} sesiones de la plantilla no caben.` : dest.length > t.sesiones.length ? `<br>Quedan ${dest.length - t.sesiones.length} clases libres al final.` : ''}
+      ${ocup ? `<br>${ocup === 1 ? '1 de esas clases ya tiene' : ocup + ' de esas clases ya tienen'} algo planificado: ${D.modo === 'vacias' ? (ocup === 1 ? 'se deja como está.' : 'se dejan como están.') : `<b>${ocup === 1 ? 'se sustituirá' : 'se sustituirán'}</b>.`}` : ''}</span></div>`;
+  modal(`<h2>Aplicar «${esc(t.nombre)}»</h2>
+    <div class="fgrid"><label class="f">Grupo<select data-f="plset" data-k="g">${gs.map(g => `<option value="${g.id}" ${g.id === D.g ? 'selected' : ''}>${esc(g.nombre)}${!t.asig || g.asig === t.asig ? '' : ' (otra asignatura)'}</option>`).join('')}</select></label>
+    <label class="f">Empezar el<input type="date" value="${D.desde}" data-f="plset" data-k="desde"></label></div>
+    <div class="stack" style="gap:6px;margin:12px 0"><div class="label">Qué copiar</div><div class="seg"><button data-a="plopt" data-k="que" data-v="todo" aria-pressed="${D.que === 'todo'}">Sesión completa</button><button data-a="plopt" data-k="que" data-v="titulos" aria-pressed="${D.que === 'titulos'}">Solo títulos y unidad</button></div>
+      <div class="label" style="margin-top:6px">Clases que ya tienen algo</div><div class="seg"><button data-a="plopt" data-k="modo" data-v="vacias" aria-pressed="${D.modo === 'vacias'}">Dejarlas como están</button><button data-a="plopt" data-k="modo" data-v="todo" aria-pressed="${D.modo === 'todo'}">Sustituirlas</button></div></div>
+    ${aviso}
+    <p class="tiny muted">Los exámenes se apuntan solos en la agenda con su nueva fecha. Las entregas, los deberes «para» una sesión concreta y los cierres no se copian. Si una sesión tenía una nota «para el curso que viene», aparecerá al prepararla.</p>
+    <div class="row"><button class="btn primary" data-a="plaplicarok" ${n ? '' : 'disabled'}>Aplicar</button><button class="btn" data-a="plantillas">Volver</button></div>`, true, 'wide');
+}
+function aplicarPlantilla(t, D) {
+  const dest = plDestino(D.g, D.desde); let hechas = 0, saltadas = 0;
+  t.sesiones.forEach((src, i) => { const o = dest[i]; if (!o || !tienePlan(src)) return;
+    const prev = S.planes[o.key];
+    if (tienePlan(prev) && D.modo === 'vacias') { saltadas++; return; }
+    if (prev?.eventos?.length) { const ids = new Set(prev.eventos.map(e => e.id)); S.agenda = S.agenda.filter(a => !(a.planKey === o.key && ids.has(a.eventoId))); touch('agenda'); }
+    if (D.que === 'titulos') { delete S.planes[o.key]; const np = plan(o.key); np.titulo = src.tituloPrevio || src.titulo || ''; np.unidad = src.unidad || ''; }
+    else { const np = JSON.parse(JSON.stringify(src)); np.eventos = (np.eventos || []).map(e => ({ ...e, id: uid() })); if (!np.eventos.length) delete np.eventos;
+      if (np.notaAnterior) np.plantillaDe = t.nombre; S.planes[o.key] = np; (np.eventos || []).forEach(ev => syncEvento(o.key, ev)); }
+    touchPlan(o.key); hechas++; });
+  return { hechas, saltadas };
+}
+Object.assign(A, {
+  plantillas() { UI.confirm = null; plantillasModal(); },
+  plguardar() { const g = grupo(UI.plG); if (!g) return; const [ini, fin] = cursoRango();
+    const ses = sesionesGuardables(g.id, ini, fin).map(o => S.planes[o.key] ? sesionParaPlantilla(S.planes[o.key]) : { titulo: '' });
+    while (ses.length && !tienePlan(ses[ses.length - 1])) ses.pop();
+    while (ses.length && !tienePlan(ses[0])) ses.shift(); // empieza en la primera sesión planificada
+    const nombre = ($('#pl-n')?.value || '').trim() || g.nombre;
+    (S.plantillas = S.plantillas || []).unshift({ id: uid(), nombre, asig: g.asig || '', nivel: g.nivel || '', origen: `${g.nombre}${S.config.curso ? ' · ' + S.config.curso : ''}`, creada: new Date().toISOString(), sesiones: ses });
+    touch('plantillas'); toast(`Plantilla guardada: ${ses.length} sesiones`); plantillasModal(); },
+  plborrar(el) { UI.confirm = 'pldel' + el.dataset.id; plantillasModal(); },
+  plcancel() { UI.confirm = null; plantillasModal(); },
+  plborrarok(el) { S.plantillas = (S.plantillas || []).filter(t => t.id !== el.dataset.id); UI.confirm = null; touch('plantillas'); toast('Plantilla borrada'); plantillasModal(); },
+  plaplicar(el) { UI.plT = el.dataset.id; UI.plA = null; plAplicarModal(); },
+  plopt(el) { UI.plA[el.dataset.k] = el.dataset.v; plAplicarModal(); },
+  plaplicarok() { const t = (S.plantillas || []).find(x => x.id === UI.plT); if (!t) return; const r = aplicarPlantilla(t, UI.plA);
+    closeModal(); UI.keepScroll = true; render(); toast(`Plantilla aplicada: ${r.hechas} sesiones${r.saltadas ? ` · ${r.saltadas === 1 ? '1 clase ya planificada se ha dejado' : r.saltadas + ' clases ya planificadas se han dejado'}` : ''}`); },
+  notaantx() { const p = plan(UI.sesion); delete p.notaAnterior; delete p.plantillaDe; touchPlan(UI.sesion); UI.keepScroll = true; render(); }
+});
+Object.assign(Fd, {
+  plg(el) { UI.plG = el.value; plantillasModal(); },
+  plset(el) { if (!el.value) return; UI.plA[el.dataset.k] = el.value; plAplicarModal(); }
+});
+
 /* sincronización con otras copias abiertas (otra pestaña, el móvil…) */
 function aplicarDoc(id, data) {
   if (Save.dirty.has(id)) return false; // tengo cambios propios sin guardar: mandan los míos
@@ -5169,6 +5274,7 @@ function aplicarDoc(id, data) {
   else if (['grupos', 'agenda', 'ideas', 'pendientes'].includes(id)) { S[id] = data?.list || []; if (id === 'grupos') S.grupos.forEach(g => { g.alumnos.forEach(normAlumno); ordenarAlumnos(g); }); }
   else if (id === 'pendgrupo') S.pendgrupo = data?.map || {};
   else if (id === 'materiales') S.materiales = normMat(data);
+  else if (id === 'plantillas') S.plantillas = data?.list || [];
   else if (id.startsWith('libro_')) { if (data && data.id) S.libros[id.slice(6)] = data; else delete S.libros[id.slice(6)]; }
   else if (id.startsWith('cal_')) { if (data && data.arbol) S.cal[id.slice(4)] = data; else delete S.cal[id.slice(4)]; }
   else if (id.startsWith('plan_') || id.startsWith('reg_')) { const src = id.startsWith('plan_') ? S.planes : S.regs; const wk = id.slice(id.indexOf('_') + 1);
