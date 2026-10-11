@@ -487,7 +487,7 @@
   #nube-entrada{position:fixed;inset:0;z-index:100;background:var(--bg,#f2f5f4);display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow:auto}
   .ne-caja{width:100%;max-width:420px;background:var(--surface,#fff);border:1px solid var(--line,#d2dbd8);border-radius:14px;padding:28px 24px;box-shadow:0 2px 16px rgba(20,35,40,.08);display:flex;flex-direction:column;gap:14px}
   .ne-marca{display:flex;align-items:center;gap:10px;font-family:var(--font-d);font-weight:700;font-size:1.5rem}
-  .ne-marca span{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--g1),var(--g2));display:inline-block}
+  .ne-marca span{width:30px;height:30px;border-radius:8px;background:url(icon-192.png) center/cover no-repeat;display:inline-block}
   .ne-caja p{margin:0;color:var(--ink-2);font-size:.95rem}
   .ne-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:.98rem;color:var(--ink)}
   .ne-btn:hover:not([disabled]){border-color:var(--ink-2)} .ne-btn[disabled]{opacity:.5;cursor:default}
