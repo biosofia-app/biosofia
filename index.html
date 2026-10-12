@@ -1,37 +1,42 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
-<title>BIOSOFÍA</title>
+<title>Biosofía</title>
 <meta name="description" content="Cuaderno docente: planificación, sesiones, agenda, materiales y seguimiento del alumnado.">
-<meta name="theme-color" content="#1b6c60">
+<meta name="theme-color" content="#2B2457">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>try{if((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone)document.documentElement.classList.add('pwa')}catch(e){}</script><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="BIOSOFÍA"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Biosofía"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="config.js"></script>
 <script src="nube.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@500;700&display=swap">
 <style>
 /* Layout: barra superior con navegación por módulos; contenido a una o dos columnas (principal + lateral) que se apilan en móvil. */
 :root{
-  --bg:#f2f5f4; --surface:#ffffff; --surface-2:#e8eeec; --ink:#16232a; --ink-2:#4a5a61; --muted:#7f8e93; --line:#d2dbd8;
-  --accent:#1b6c60; --accent-ink:#ffffff; --accent-soft:#d5eae5;
-  --ok:#2c7a4c; --ok-soft:#dbeee1; --warn:#9c620a; --warn-soft:#f5e6c6; --bad:#b03737; --bad-soft:#f6dddd; --info:#2f5fb3; --info-soft:#dde6f6;
+  --bg:#FCFCFA; --surface:#ffffff; --surface-2:#F3F1F8; --ink:#1B2230; --ink-2:#3A4256; --muted:#6B6880; --line:#CFCBDD;
+  --accent:#4B3B8F; --accent-ink:#ffffff; --accent-soft:#EEEAF7;
+  --ok:#2F7D4F; --ok-soft:#E7F3EC; --warn:#9c620a; --warn-soft:#F6EBD3; --bad:#B0324F; --bad-soft:#FBEFF3; --info:#3F6FA8; --info-soft:#E4ECF7;
+  --barra:#2B2457; --barra-ink:#ffffff; --barra-2:#CFC8EA; --rosa:#F2B8CB; --mano:#B03A63; --mano-2:#4B3B8F; --cuadri:rgba(75,59,143,.07);
   --g1:#1f8a70; --g2:#2f5fb3; --g3:#b98222; --g4:#8a5bb5; --g5:#a8453a; --g6:#6f8f2a; --g7:#c2457a; --g8:#1592a8; --g9:#56616b;
-  --font-d:'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
-  --font-b:'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
-  --r:10px; --shadow:0 1px 2px rgba(20,35,40,.06), 0 2px 8px rgba(20,35,40,.05);
+  --font-d:'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-b:'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-m:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-h:'Caveat', 'Segoe Print', 'Bradley Hand', cursive;
+  --r:3px; --shadow:0 1px 0 rgba(27,34,48,.04);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#101719; --surface:#172124; --surface-2:#1f2b2f; --ink:#e2ebe9; --ink-2:#a5b4b7; --muted:#73858b; --line:#2b393e;
-  --accent:#4cb4a0; --accent-ink:#08201b; --accent-soft:#163934;
-  --ok:#6ac48d; --ok-soft:#163325; --warn:#e3a94a; --warn-soft:#3a2c12; --bad:#ee7d7d; --bad-soft:#3d1c1c; --info:#7ea6ec; --info-soft:#1b2a45;
+  --bg:#13111D; --surface:#1B1928; --surface-2:#252236; --ink:#E8E6F2; --ink-2:#B9B5CC; --muted:#8E8AA6; --line:#34314A;
+  --accent:#A99BEA; --accent-ink:#14121F; --accent-soft:#2A2550;
+  --ok:#6ac48d; --ok-soft:#163325; --warn:#e3a94a; --warn-soft:#3a2c12; --bad:#EE86A3; --bad-soft:#3D1C29; --info:#7ea6ec; --info-soft:#1b2a45;
+  --barra:#0E0B1F; --barra-2:#B9B0E0; --mano:#F2A0BC; --mano-2:#C4B8F5; --cuadri:rgba(169,155,234,.05);
   --g1:#3fb592; --g2:#6f98e6; --g3:#dcaa4c; --g4:#b48ade; --g5:#df7a6d; --g6:#9fc155; --g7:#e57aa6; --g8:#4fc3d6; --g9:#9aa5ae;
   --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark; } }
 :root[data-theme="dark"]{
-  --bg:#101719; --surface:#172124; --surface-2:#1f2b2f; --ink:#e2ebe9; --ink-2:#a5b4b7; --muted:#73858b; --line:#2b393e;
-  --accent:#4cb4a0; --accent-ink:#08201b; --accent-soft:#163934;
-  --ok:#6ac48d; --ok-soft:#163325; --warn:#e3a94a; --warn-soft:#3a2c12; --bad:#ee7d7d; --bad-soft:#3d1c1c; --info:#7ea6ec; --info-soft:#1b2a45;
+  --bg:#13111D; --surface:#1B1928; --surface-2:#252236; --ink:#E8E6F2; --ink-2:#B9B5CC; --muted:#8E8AA6; --line:#34314A;
+  --accent:#A99BEA; --accent-ink:#14121F; --accent-soft:#2A2550;
+  --ok:#6ac48d; --ok-soft:#163325; --warn:#e3a94a; --warn-soft:#3a2c12; --bad:#EE86A3; --bad-soft:#3D1C29; --info:#7ea6ec; --info-soft:#1b2a45;
+  --barra:#0E0B1F; --barra-2:#B9B0E0; --mano:#F2A0BC; --mano-2:#C4B8F5; --cuadri:rgba(169,155,234,.05);
   --g1:#3fb592; --g2:#6f98e6; --g3:#dcaa4c; --g4:#b48ade; --g5:#df7a6d; --g6:#9fc155; --g7:#e57aa6; --g8:#4fc3d6; --g9:#9aa5ae;
   --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark; }
 
@@ -431,6 +436,57 @@ button, a, input, select, textarea, label{touch-action:manipulation}
 }
 @media (max-width:760px) and (prefers-reduced-motion: no-preference){ .modal{animation:sube .18s ease-out} @keyframes sube{from{transform:translateY(24px); opacity:.6}} }
 @media (display-mode: standalone){ .topbar{padding-top:env(safe-area-inset-top,0px)} }
+/* ===== Estilo «Lámina científica + apuntes a mano» ===== */
+html,body{background-color:var(--bg); background-image:linear-gradient(var(--cuadri) 1px, transparent 1px),linear-gradient(90deg, var(--cuadri) 1px, transparent 1px); background-size:16px 16px}
+h1,h2,h3,h4{font-weight:600}
+.mono,.label,.tl-time,.tag,.pill{font-family:var(--font-m)}
+.hand{font-family:var(--font-h); font-weight:500; line-height:1.1}
+.label{font-weight:600; letter-spacing:.08em; color:var(--ink-2)}
+.tag{font-weight:500; border-radius:2px; text-transform:uppercase; letter-spacing:.03em; font-size:.7rem}
+.pill{font-weight:500; border-radius:2px; letter-spacing:.02em}
+.topbar{background:var(--barra); color:var(--barra-ink); border-bottom:0}
+.brand{font-family:var(--font-d); font-weight:600; font-size:1.25rem; letter-spacing:.01em; color:var(--barra-ink); gap:10px}
+.brand-ico{width:34px; height:34px; border-radius:9px; display:block; flex:none; box-shadow:0 0 0 2px rgba(244,230,200,.9), 0 2px 6px rgba(0,0,0,.25)}
+.nav button{color:var(--barra-2); font-weight:500; border-radius:0}
+.nav button:hover{background:rgba(255,255,255,.08); color:#fff}
+.nav button[aria-current="page"]{background:none; color:#fff; font-weight:600; box-shadow:inset 0 -3px 0 var(--rosa)}
+.savestate{font-family:var(--font-h); font-size:1.2rem; color:#BFE3CC}
+.savestate.err{color:var(--rosa)}
+.nc-btn{background:rgba(255,255,255,.12)!important; color:#fff!important; border-color:rgba(255,255,255,.35)!important}
+.panel,.card,.tl-item{border-radius:var(--r); box-shadow:none}
+.btn{border-radius:2px; font-weight:500}
+.btn.primary{font-weight:600}
+.seg{border-radius:2px; background:var(--surface); border:1px solid var(--line); padding:2px}
+.seg button{border-radius:1px; font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--barra); color:#fff; box-shadow:none}
+input[type=text],input[type=date],input[type=time],input[type=number],input[type=url],input[type=search],select,textarea{border-radius:2px}
+.tabs{display:flex; width:fit-content; max-width:100%; gap:0; border:1px solid var(--ink); background:var(--surface); border-radius:2px}
+.tabs button{font-family:var(--font-m); font-weight:500; font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; border-bottom:0; margin:0; border-right:1px solid var(--line); padding:9px 14px}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--barra); color:#fff; font-weight:600; border-right-color:var(--barra)}
+.tl-time{font-family:var(--font-h); font-size:1.45rem; font-weight:500; line-height:1; color:var(--mano-2)}
+.tl-time small{font-family:var(--font-m); font-size:.72rem}
+.hoy-mano{font-family:var(--font-h); font-size:1.6rem; line-height:1; color:var(--mano)}
+/* Desarrollo como láminas */
+.fig{padding:0; overflow:hidden}
+.fighead{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--surface-2); font-family:var(--font-m); font-size:.76rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase}
+.fighead .tiny{font-weight:400; letter-spacing:.02em}
+.figbody{padding:12px 14px 14px}
+.fig.oscura{background:var(--barra); color:#fff; border-color:var(--barra)}
+.fig.oscura .fighead{background:transparent; color:var(--rosa); border-bottom-color:rgba(255,255,255,.18)}
+.fig.oscura .p-body{font-family:var(--font-h); font-size:1.65rem; line-height:1.2}
+.fig.oscura a{color:#E7E2FF}
+.devbar{display:flex; height:8px; margin:2px 0 8px; border-radius:1px; overflow:hidden}
+.devguion li .hand{font-size:1.4rem; margin-right:8px}
+@media (max-width:760px){
+  .tabbar{background:var(--barra); border-top:0}
+  .tabbar button{color:var(--barra-2); font-weight:600}
+  .tabbar button[aria-current="page"]{color:#fff}
+  .tabbar .tb-add{color:#fff}
+  .tabbar .tb-add .ic{background:var(--rosa); color:var(--barra)}
+  .savestate{font-size:1.05rem}
+  .brand-ico{width:30px; height:30px; border-radius:8px}
+}
 .devgrid{columns:2 340px; column-gap:16px}
 .devgrid > .panel{break-inside:avoid; margin:0 0 16px; display:block}
 .devgrid h3{margin:0 0 8px}
@@ -453,7 +509,7 @@ button, a, input, select, textarea, label{touch-action:manipulation}
 
 </head><body>
 <header class="topbar"><div class="topbar-in">
-  <div class="brand"><span class="brand-mark" aria-hidden="true"></span>BIOSOFÍA</div>
+  <div class="brand"><img class="brand-ico" src="icon-192.png" alt="" width="34" height="34">Biosofía</div>
   <nav class="nav" id="nav" aria-label="Módulos"></nav>
   <div class="savestate" id="savestate" aria-live="polite"></div>
   <div id="nube-cuenta"></div>
@@ -2243,7 +2299,7 @@ VIEWS.hoy = () => {
   const man = siguienteLectivo(s); const sesM = sesionesDia(man);
   const ideasHoy = ses.filter(x => !fest).map(x => ({ x, n: ideasPara(x.key).length })).filter(o => o.n);
   return `
-  <div class="page-head"><div><div class="label">${s === hoy ? 'Hoy' : rel(diffDays(hoy, s))}</div><h1>${cap(fLong(s))}</h1>
+  <div class="page-head"><div>${s === hoy ? '<div class="hoy-mano">hoy toca…</div>' : `<div class="label">${rel(diffDays(hoy, s))}</div>`}<h1>${cap(fLong(s))}</h1>
     <div class="sub">${fest ? esc(fest) : `${ses.length} ${ses.length === 1 ? 'clase' : 'clases'}`}${ev ? ` · ${esc(ev.nombre)}: ${diffDays(s, ev.fin) >= 0 ? 'faltan ' + diffDays(s, ev.fin) + ' días para la evaluación' : ''}` : ''}</div></div>
     <div class="row"><button class="btn sm" data-a="dia" data-d="-1" aria-label="Día anterior">‹</button><button class="btn sm" data-a="dia" data-d="0">Hoy</button><button class="btn sm" data-a="dia" data-d="1" aria-label="Día siguiente">›</button></div></div>
   <div class="cols"><div class="stack">${tl}
@@ -2441,7 +2497,7 @@ VIEWS.sesion = () => {
     <h1 style="margin-top:6px">${gchip(g)} <span class="muted" style="font-weight:500">· ${esc(p?.titulo || 'Sin planificar')}</span></h1>
     <div class="sub">${cap(fLong(fecha))} · ${esc(f.inicio)}–${esc(f.fin)}${h?.aula ? ' · Aula ' + esc(h.aula) : ''}${ns ? ` · Sesión ${ns.n} de ${ns.total}` : ''}${p?.unidad ? ' · ' + esc(p.unidad) : ''}</div></div>
     <div class="row">${!p?.sinClase && libroSesion(key)?.b ? `<button class="btn sm primary" data-a="seslibpres">📖 Libro</button>` : ''}${p?.sinClase ? '' : `<button class="btn sm" data-a="desplazar">Desplazar desde aquí</button>`}</div></div>
-    ${p?.sinClase ? '' : `<div class="tabs" role="tablist">${[['preparar', 'Preparar'], ['inicio', 'Inicio'], ['desarrollo', 'Desarrollo'], ['cierre', 'Cierre'], ['directo', 'Anotaciones']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="stab" data-v="${v}">${tt}${v === 'cierre' && p?.cierre?.hecho ? ' ✓' : ''}</button>`).join('')}</div>`}${body}`;
+    ${p?.sinClase ? '' : `<div class="tabs" role="tablist">${[['preparar', '01 Preparar'], ['inicio', '02 Inicio'], ['desarrollo', '03 Desarrollo'], ['cierre', '04 Cierre'], ['directo', '05 Anotaciones']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="stab" data-v="${v}">${tt}${v === 'cierre' && p?.cierre?.hecho ? ' ✓' : ''}</button>`).join('')}</div>`}${body}`;
 };
 
 function tabSitios(g) {
@@ -2703,7 +2759,9 @@ function tabDesarrollo(key, g, f) {
   const dur = tmin(f.fin) - tmin(f.inicio); const bl = (p.bloques || []).filter(b => (b.fase || '').trim() || Number(b.min));
   let acum = 0;
   const S_ = [];
-  if (bl.length) S_.push(['Guion', `<ol class="devguion">${bl.map(b => { const ini = acum; acum += Number(b.min) || 0; return `<li><span class="grow">${esc(b.fase || '')}</span><span class="tiny muted">${Number(b.min) ? `${b.min} min · ${tHM(tmin(f.inicio) + ini)}` : ''}</span></li>`; }).join('')}</ol><div class="tiny muted">${acum} de ${dur} min</div>`]);
+  const COLF = ['var(--mano)', 'var(--accent)', 'var(--ok)', 'var(--muted)', 'var(--info)', 'var(--warn)'];
+  if (bl.length) { const tot = bl.reduce((s0, b) => s0 + (Number(b.min) || 0), 0) || 1;
+    S_.push(['Guion', `<div class="devbar" aria-hidden="true">${bl.map((b, i) => `<span style="width:${(Number(b.min) || 0) / Math.max(tot, dur || 0) * 100}%;background:${COLF[i % COLF.length]}"></span>`).join('')}</div><div class="stack" style="gap:0">${bl.map((b, i) => { const ini = acum; acum += Number(b.min) || 0; return `<div class="row" style="flex-wrap:nowrap;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid var(--surface-2)"><span class="hand" style="font-size:1.45rem;width:52px;color:${COLF[i % COLF.length]}">${tHM(tmin(f.inicio) + ini)}</span><span class="grow">${esc(b.fase || '')}</span><span class="mono tiny muted">${Number(b.min) ? b.min + '′' : ''}</span></div>`; }).join('')}</div>`, `${acum} / ${dur} min`]); }
   const ex = fij('explicacion') + txt(p.explicacion) + enl(p.enlaces); if (ex) S_.push(['Explicación', ex]);
   const co = fij('consejos') + txt(p.consejosNotas) + consejosHTML; if (co) S_.push(['Consejos para explicarlo', co]);
   const mo = fij('motivar') + txt(p.motivarNotas) + motivarHTML; if (mo) S_.push(['Motivar', mo]);
@@ -2717,11 +2775,11 @@ function tabDesarrollo(key, g, f) {
   if ((p.eventos || []).length) S_.push(['Exámenes y entregas', p.eventos.map(ev => `<div class="row"><span class="pill ${ev.tipo === 'examen' ? 'bad' : 'info'}">${ev.tipo === 'examen' ? 'Examen hoy' : 'Entrega'}</span> <b>${esc(ev.titulo || '')}</b>${ev.tipo === 'entrega' && ev.fecha ? ` <span class="small muted">para el ${fShort(ev.fecha)}</span>` : ''}</div>`).join('')]);
   const cab = `<div class="panel" style="margin-bottom:14px"><div class="row between"><div><div class="label">${esc(p.unidad || '')}</div><h2 style="margin:2px 0 0">${esc(p.titulo || 'Sin título')}</h2></div><div class="row"><button class="btn sm ghost" data-a="stab" data-v="preparar">Editar en Preparar</button></div></div></div>`;
   if (!S_.length) return cab + `<div class="panel empty">Todavía no has preparado nada para esta sesión. <a href="#" data-a="stab" data-v="preparar">Ir a Preparar</a></div>`;
-  return cab + `<div class="devgrid">${S_.map(([t, b]) => `<section class="panel dev"><h3>${t}</h3><div class="stack" style="gap:8px">${b}</div></section>`).join('')}</div>`;
+  return cab + `<div class="devgrid">${S_.map(([t, b, extra], i) => `<section class="panel dev fig${t === 'Motivar' ? ' oscura' : ''}"><div class="fighead"><span>Fig. ${i + 1} — ${t}</span>${extra ? `<span class="tiny">${extra}</span>` : ''}</div><div class="stack figbody" style="gap:8px">${b}</div></section>`).join('')}</div>`;
 }
 function tabPreparar(key, g, f) {
   const p = plan(key);
-  const notaAnt = p.notaAnterior ? `<div class="alert info" style="margin-bottom:10px"><span class="grow">📋 <b>Nota del curso anterior</b> (plantilla «${esc(p.plantillaDe || '')}»): ${esc(p.notaAnterior)}</span><button class="iconbtn" data-a="notaantx" aria-label="Quitar la nota">✕</button></div>` : ''; const dur = tmin(f.fin) - tmin(f.inicio); const sum = (p.bloques || []).reduce((s, b) => s + (Number(b.min) || 0), 0);
+  const notaAnt = p.notaAnterior ? `<div class="alert info" style="margin-bottom:10px"><span class="grow"><b>Nota del curso anterior</b> <span class="tiny muted">(plantilla «${esc(p.plantillaDe || '')}»)</span><br><span class="hand" style="font-size:1.35rem;color:var(--mano)">${esc(p.notaAnterior)}</span></span><button class="iconbtn" data-a="notaantx" aria-label="Quitar la nota">✕</button></div>` : ''; const dur = tmin(f.fin) - tmin(f.inicio); const sum = (p.bloques || []).reduce((s, b) => s + (Number(b.min) || 0), 0);
   const ideas = ideasPara(key); const sg = p.sug || {};
 
   const sEsquema = sg.esquema ? `<div class="sugbox"><div class="label">Esquema sugerido</div><pre id="sug-esquema" class="sugpre">${esc(sg.esquema)}</pre>

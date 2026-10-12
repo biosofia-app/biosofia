@@ -12,7 +12,8 @@
 'use strict';
 (function () {
   const CFG = window.BIOSOFIA_CONFIG || {};
-  const NOMBRE = CFG.nombre || 'BIOSOFÍA';
+  const NOMBRE = CFG.nombre || 'BIOSOFÍA'; // nombre de la carpeta en Drive/OneDrive: no cambiar
+  const MARCA = 'Biosofía'; // nombre que se ve en pantalla
   const MAX_MB = CFG.maxArchivoMB || 100;
   const SES_K = 'bs:sesion', TOK_K = 'bs:token';
   const BLOBS = 'biosofia-blobs';
@@ -487,7 +488,7 @@
   #nube-entrada{position:fixed;inset:0;z-index:100;background:var(--bg,#f2f5f4);display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow:auto}
   .ne-caja{width:100%;max-width:420px;background:var(--surface,#fff);border:1px solid var(--line,#d2dbd8);border-radius:14px;padding:28px 24px;box-shadow:0 2px 16px rgba(20,35,40,.08);display:flex;flex-direction:column;gap:14px}
   .ne-marca{display:flex;align-items:center;gap:10px;font-family:var(--font-d);font-weight:700;font-size:1.5rem}
-  .ne-marca span{width:30px;height:30px;border-radius:8px;background:url(icon-192.png) center/cover no-repeat;display:inline-block}
+  .ne-marca span{width:40px;height:40px;border-radius:10px;background:url(icon-192.png) center/cover;display:inline-block;box-shadow:0 0 0 2px rgba(244,230,200,.9),0 2px 6px rgba(0,0,0,.2)}
   .ne-caja p{margin:0;color:var(--ink-2);font-size:.95rem}
   .ne-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;font-size:.98rem;color:var(--ink)}
   .ne-btn:hover:not([disabled]){border-color:var(--ink-2)} .ne-btn[disabled]{opacity:.5;cursor:default}
@@ -515,7 +516,7 @@
         const el = document.createElement('div'); el.id = 'nube-entrada';
         const sinG = !CFG.googleClientId, sinM = !CFG.microsoftClientId;
         el.innerHTML = `<div class="ne-caja" role="dialog" aria-labelledby="ne-t">
-          <div class="ne-marca"><span aria-hidden="true"></span><h1 id="ne-t" style="font-size:1.5rem">${esc(NOMBRE)}</h1></div>
+          <div class="ne-marca"><span aria-hidden="true"></span><h1 id="ne-t" style="font-size:1.5rem">${esc(MARCA)}</h1></div>
           <p>Tu cuaderno docente. Entra con tu cuenta y tus datos se guardan en tu propio Google Drive o OneDrive: nadie más los ve.</p>
           <div class="ne-err" id="ne-err">${esc(msg || '')}</div>
           <button class="ne-btn" data-p="google" ${sinG ? 'disabled' : ''}>${LOGO_G}Entrar con Google</button>
@@ -563,7 +564,7 @@
       this.estilo(); let el = document.getElementById('nube-entrada');
       if (!t) { el?.remove(); return; }
       if (!el) { el = document.createElement('div'); el.id = 'nube-entrada'; document.body.appendChild(el); }
-      el.innerHTML = `<div class="ne-caja"><div class="ne-marca"><span aria-hidden="true"></span>${esc(NOMBRE)}</div><p>${esc(t)}</p></div>`;
+      el.innerHTML = `<div class="ne-caja"><div class="ne-marca"><span aria-hidden="true"></span>${esc(MARCA)}</div><p>${esc(t)}</p></div>`;
     },
     cuenta() {
       const cont = document.getElementById('nube-cuenta'); if (!cont) return;
