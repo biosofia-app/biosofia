@@ -1,12 +1,12 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
-<title>Biosofía</title>
+<title>BIOSOFÍA</title>
 <meta name="description" content="Cuaderno docente: planificación, sesiones, agenda, materiales y seguimiento del alumnado.">
 <meta name="theme-color" content="#1b6c60">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>try{if((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone)document.documentElement.classList.add('pwa')}catch(e){}</script><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Biosofía"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BIOSOFÍA"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="config.js"></script>
 <script src="nube.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -47,7 +47,7 @@ button,input,select,textarea{font:inherit; color:inherit}
 .topbar{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--surface); border-bottom:1px solid var(--line)}
 .topbar-in{max-width:1240px; margin:0 auto; padding-inline:16px; display:flex; align-items:center; gap:16px; min-height:54px}
 .brand{font-family:var(--font-d); font-weight:700; font-size:1.05rem; display:flex; align-items:center; gap:8px; white-space:nowrap}
-.brand-mark{width:22px; height:22px; border-radius:6px; background:url(icon-192.png) center/cover no-repeat; display:inline-block}
+.brand-mark{width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,var(--g1),var(--g2)); display:inline-block}
 .nav{display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; flex:1; min-width:0}
 .nav::-webkit-scrollbar{display:none}
 .nav button{border:0; background:none; padding:8px 11px; border-radius:8px; color:var(--ink-2); cursor:pointer; white-space:nowrap; font-weight:700; font-size:.92rem}
@@ -2696,7 +2696,7 @@ function tabPreparar(key, g, f) {
     <div class="panel stack"><div class="fgrid"><label class="f">Título<input type="text" data-f="plan" data-k="titulo" value="${esc(p.titulo)}"></label>
       <label class="f">Unidad<input type="text" data-f="plan" data-k="unidad" value="${esc(p.unidad)}"></label></div>
       <label class="f">Temas<input type="text" data-f="plan" data-k="etiquetas" value="${esc(p.etiquetas)}"></label>
-      <div class="row">${botonBancoIdeas(key)}${(p.ideasFijadas || []).length ? `<span class="small muted">${p.ideasFijadas.length} ${p.ideasFijadas.length === 1 ? 'idea fijada' : 'ideas fijadas'}</span>` : ''}</div>${libroSesionHTML(key)}</div>
+      <div class="row">${botonBancoIdeas(key)}${S.grupos.filter(x => x.id !== g.id && !esTutoria(x)).length ? `<button class="btn sm" data-a="cpdeabrir">⇩ Copiar de otro grupo</button>${tienePlan(p) ? `<button class="btn sm" data-a="cpaabrir">⇧ Copiar a otro grupo</button>` : ''}` : ''}${(p.ideasFijadas || []).length ? `<span class="small muted">${p.ideasFijadas.length} ${p.ideasFijadas.length === 1 ? 'idea fijada' : 'ideas fijadas'}</span>` : ''}</div>${libroSesionHTML(key)}</div>
 
     ${sec('guion', 'Guion', `<div class="row between"><span class="small" style="${sum > dur ? 'color:var(--bad)' : ''}">${sum} de ${dur} min</span></div>
       <div class="sumbar ${sum > dur ? 'over' : ''}"><span style="width:${Math.min(100, dur ? sum / dur * 100 : 0)}%"></span></div>
@@ -5177,6 +5177,70 @@ function librosPanel(a) {
 }
 
 /* ---------- arranque ---------- */
+/* ===== COPIAR UNA SESIÓN ENTRE GRUPOS (misma asignatura en 1.º A, 1.º B…) ===== */
+const CP_FUERA = ['cierre', 'deberesPara', 'resumenInicio', 'sug', 'sinClase', 'motivo', 'notaAnterior', 'plantillaDe'];
+function copiarSesion(srcKey, dstKey) {
+  const src = S.planes[srcKey]; if (!src) return;
+  const prev = S.planes[dstKey];
+  if (prev?.eventos?.length) { const ids = new Set(prev.eventos.map(e => e.id)); S.agenda = S.agenda.filter(a => !(a.planKey === dstKey && ids.has(a.eventoId))); touch('agenda'); }
+  const np = JSON.parse(JSON.stringify(src)); CP_FUERA.forEach(k => delete np[k]);
+  np.eventos = (np.eventos || []).map(e => ({ ...e, id: uid() })); if (!np.eventos.length) delete np.eventos;
+  np.copiadaDe = srcKey; S.planes[dstKey] = np; (np.eventos || []).forEach(ev => syncEvento(dstKey, ev)); touchPlan(dstKey);
+}
+const cpTit = p => words(p?.titulo || '');
+function cpFila(o, p, btn) {
+  const g = grupo(parseKey(o.key).grupoId); const ns = numSesion(o.key);
+  const extra = [p?.unidad, (p?.actividades || []).length ? `${p.actividades.length} act.` : '', (p?.eventos || []).some(e => e.tipo === 'examen') ? '📝 examen' : ''].filter(Boolean).join(' · ');
+  return `<div class="li" style="flex-wrap:wrap;gap:8px"><div class="grow" style="min-width:200px">${gchip(g)} <span class="small">${fShort(o.fecha)}${ns ? ` · sesión ${ns.n}` : ''}</span><div><b>${esc(p?.titulo || 'Sin planificar')}</b>${extra ? ` <span class="tiny muted">${esc(extra)}</span>` : ''}</div></div>${btn}</div>`;
+}
+/* traer: lista de sesiones planificadas de otros grupos */
+function copiarDeModal() {
+  const key = UI.cpKey; const { grupoId, fecha } = parseKey(key); const g = grupo(grupoId);
+  const misTit = new Set(Object.keys(S.planes).filter(k => k.startsWith(grupoId + '|')).map(k => cpTit(S.planes[k])).filter(Boolean));
+  const otros = S.grupos.filter(x => x.id !== grupoId && !esTutoria(x));
+  const filtro = UI.cpG && otros.some(x => x.id === UI.cpG) ? UI.cpG : '';
+  let L = []; otros.filter(x => !filtro || x.id === filtro).forEach(x => ocurrencias(x.id, addDays(fecha, -45), addDays(fecha, 45)).forEach(o => { const p = S.planes[o.key]; if (tienePlan(p)) L.push({ o, p, misma: !!g.asig && x.asig === g.asig, hecha: misTit.has(cpTit(p)) }); }));
+  const d = o => Math.abs(diffDays(fecha, o.fecha));
+  L.sort((a, b) => (b.misma - a.misma) || (a.hecha - b.hecha) || (a.hecha ? d(a.o) - d(b.o) : a.o.fecha.localeCompare(b.o.fecha)));
+  L = L.slice(0, 40);
+  const tiene = tienePlan(S.planes[key]);
+  modal(`<h2>Copiar una sesión de otro grupo</h2>
+    <p class="small muted" style="margin-top:0">Para ${gchip(g)} el ${fShort(fecha)}. Se copia todo lo preparado (guion, explicación, actividades, recursos, deberes y exámenes); no se copian el cierre ni los registros. Arriba salen las sesiones de grupos de la misma asignatura que <b>todavía no has usado</b> en este grupo.</p>
+    ${tiene ? `<div class="alert warn" style="margin-bottom:10px">Esta sesión ya tiene contenido: al copiar se sustituirá.</div>` : ''}
+    <label class="f" style="max-width:260px;margin-bottom:10px">Grupo<select data-f="cpg"><option value="">Todos</option>${otros.map(x => `<option value="${x.id}" ${filtro === x.id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></label>
+    ${L.length ? `<div class="list">${L.map(({ o, p, hecha }) => cpFila(o, p, `${hecha ? '<span class="tiny muted">ya usada aquí</span>' : ''}<button class="btn sm ${hecha ? 'ghost' : 'primary'}" data-a="cpde" data-k="${esc(o.key)}">Copiar aquí</button>`)).join('')}</div>`
+      : '<p class="empty">No hay sesiones planificadas en otros grupos en las semanas cercanas.</p>'}
+    <div class="row" style="margin-top:12px"><button class="btn" data-a="close">Cerrar</button></div>`, true, 'wide');
+}
+/* llevar: elegir la clase del otro grupo donde copiarla */
+function copiarAModal() {
+  const key = UI.cpKey; const { grupoId, fecha } = parseKey(key); const g = grupo(grupoId); const p = S.planes[key];
+  const otros = S.grupos.filter(x => x.id !== grupoId && !esTutoria(x)).sort((a, b) => (b.asig === g.asig) - (a.asig === g.asig));
+  const gid = otros.some(x => x.id === UI.cpG) ? UI.cpG : otros[0]?.id; UI.cpG = gid;
+  const occ = gid ? ocurrencias(gid, addDays(fecha, -7), addDays(fecha, 45)).filter(o => !S.planes[o.key]?.sinClase) : [];
+  const primera = occ.find(o => o.fecha >= fecha && !tienePlan(S.planes[o.key])) || occ.find(o => !tienePlan(S.planes[o.key]));
+  modal(`<h2>Copiar «${esc(p?.titulo || 'esta sesión')}» a otro grupo</h2>
+    <p class="small muted" style="margin-top:0">Elige el grupo y la clase. Se copia todo lo preparado (guion, explicación, actividades, recursos, deberes y exámenes), no el cierre ni los registros.</p>
+    <label class="f" style="max-width:260px;margin-bottom:10px">Grupo<select data-f="cpg2">${otros.map(x => `<option value="${x.id}" ${x.id === gid ? 'selected' : ''}>${esc(x.nombre)}${g.asig && x.asig !== g.asig ? ' (otra asignatura)' : ''}</option>`).join('')}</select></label>
+    ${occ.length ? `<div class="list">${occ.map(o => { const q = S.planes[o.key]; const lleno = tienePlan(q);
+      return cpFila(o, q, UI.confirm === 'cpa' + o.key ? `<span class="small">¿Sustituir lo que tiene?</span><button class="btn sm danger" data-a="cpa" data-k="${esc(o.key)}">Sustituir</button><button class="btn sm" data-a="cpacancel">No</button>`
+        : `<button class="btn sm ${o === primera ? 'primary' : lleno ? 'ghost' : ''}" data-a="${lleno ? 'cpaconf' : 'cpa'}" data-k="${esc(o.key)}">${lleno ? 'Sustituir…' : 'Copiar aquí'}</button>`); }).join('')}</div>`
+      : `<p class="empty">${otros.length ? 'Ese grupo no tiene clases en estas semanas.' : 'No tienes otros grupos.'}</p>`}
+    <div class="row" style="margin-top:12px"><button class="btn" data-a="close">Cerrar</button></div>`, true, 'wide');
+}
+Object.assign(A, {
+  cpdeabrir() { UI.cpKey = UI.sesion; UI.cpG = ''; copiarDeModal(); },
+  cpaabrir() { UI.cpKey = UI.sesion; UI.cpG = null; UI.confirm = null; copiarAModal(); },
+  cpde(el) { copiarSesion(el.dataset.k, UI.cpKey); closeModal(); UI.keepScroll = true; render(); toast(`Copiada de ${grupo(parseKey(el.dataset.k).grupoId)?.nombre || 'otro grupo'}`); },
+  cpaconf(el) { UI.confirm = 'cpa' + el.dataset.k; copiarAModal(); },
+  cpacancel() { UI.confirm = null; copiarAModal(); },
+  cpa(el) { const k = el.dataset.k; copiarSesion(UI.cpKey, k); UI.confirm = null; closeModal(); UI.keepScroll = true; render(); toast(`Copiada a ${grupo(parseKey(k).grupoId)?.nombre || 'otro grupo'} (${fShort(parseKey(k).fecha)})`); }
+});
+Object.assign(Fd, {
+  cpg(el) { UI.cpG = el.value; copiarDeModal(); },
+  cpg2(el) { UI.cpG = el.value; UI.confirm = null; copiarAModal(); }
+});
+
 /* ===== PLANTILLAS DE PLANIFICACIÓN =====
    Guardan la secuencia de sesiones de un grupo SIN fechas (sesión 1, 2, 3…) y se aplican
    a otro grupo desde una fecha, sesión a sesión por sus clases, aunque el horario sea otro. */
