@@ -431,6 +431,14 @@ button, a, input, select, textarea, label{touch-action:manipulation}
 }
 @media (max-width:760px) and (prefers-reduced-motion: no-preference){ .modal{animation:sube .18s ease-out} @keyframes sube{from{transform:translateY(24px); opacity:.6}} }
 @media (display-mode: standalone){ .topbar{padding-top:env(safe-area-inset-top,0px)} }
+.devgrid{columns:2 340px; column-gap:16px}
+.devgrid > .panel{break-inside:avoid; margin:0 0 16px; display:block}
+.devgrid h3{margin:0 0 8px}
+.dev .qx, .dev [data-a="guardaridea"], .dev .pin .iconbtn{display:none}
+.devguion, .devacts{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px}
+.devguion li span{display:inline}
+.devguion li{display:list-item}
+.devguion li .tiny{margin-left:8px}
 /* App instalada en el móvil: la página no se desplaza, solo el contenido (#main).
    Así la barra inferior no es «fixed» y iOS no puede dejarla a media pantalla al hacer scroll. */
 @media (max-width:760px){
@@ -1823,6 +1831,7 @@ const diffDays = (a, b) => Math.round((parseD(b) - parseD(a)) / 86400000);
 const todayStr = () => ymd(new Date());
 const nowMin = () => { const d = new Date(); return d.getHours()*60 + d.getMinutes(); };
 const tmin = t => { if (!t) return 0; const [h,m] = t.split(':').map(Number); return h*60 + m; };
+const tHM = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DIAS_C = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -2293,7 +2302,7 @@ VIEWS.plan = () => {
     body = fest ? `<div class="panel empty">${esc(fest)}</div>` : !ses.length ? `<div class="panel empty">Sin clases este día.</div>` :
       `<div class="stack">${ses.map(x => { const p = S.planes[x.key]; const st = estadoPlan(x.key); return `<div class="panel"><div class="row between"><div>${gchip(x.grupo)} <span class="muted small">· ${esc(x.franja.inicio)}–${esc(x.franja.fin)}${x.aula ? ' · Aula ' + esc(x.aula) : ''}</span></div>${pill(st.c, st.t)}</div>
         <div style="margin-top:8px"><b>${esc(p?.titulo || 'Sin planificar')}</b>${p?.objetivos ? `<div class="small muted">${esc(p.objetivos)}</div>` : ''}</div>
-        <div class="row" style="margin-top:8px"><button class="btn sm primary" data-a="sesion" data-k="${esc(x.key)}" data-tab="preparar">Preparar</button>${botonBancoIdeas(x.key, 'Ideas')}<button class="btn sm" data-a="sesion" data-k="${esc(x.key)}" data-tab="directo">En directo</button></div></div>`; }).join('')}</div>`;
+        <div class="row" style="margin-top:8px"><button class="btn sm primary" data-a="sesion" data-k="${esc(x.key)}" data-tab="preparar">Preparar</button>${botonBancoIdeas(x.key, 'Ideas')}<button class="btn sm" data-a="sesion" data-k="${esc(x.key)}" data-tab="directo">Anotaciones</button></div></div>`; }).join('')}</div>`;
   } else {
     const p0 = parseD(d); const first = ymd(new Date(p0.getFullYear(), p0.getMonth(), 1));
     title = cap(MESES[p0.getMonth()]) + ' ' + p0.getFullYear();
@@ -2347,7 +2356,7 @@ VIEWS.grupo = () => {
         <input type="text" placeholder="Observaciones (medidas, permisos…)" value="${esc(a.obs || '')}" data-f="alobs" data-id="${a.id}" style="flex:1"><button class="iconbtn" data-a="delal" data-id="${a.id}" aria-label="Eliminar alumno">✕</button>
         <div class="row" style="width:100%"><input type="text" placeholder="Materia pendiente de otro curso (p. ej. ByG 1.º ESO)" value="${esc(a.pendiente || '')}" data-f="alpend" data-id="${a.id}" style="flex:1;min-width:200px">${a.pendiente ? `<span class="small muted">Recuperada</span><div class="seg"><button data-a="alrecup" data-id="${a.id}" data-v="1" aria-pressed="${!!a.pendRecuperada}">Sí</button><button data-a="alrecup" data-id="${a.id}" data-v="0" aria-pressed="${!a.pendRecuperada}">No</button></div>` : ''}</div></div>`).join('')}</div>` : `<p class="empty">Sin alumnos todavía.</p>`}</div>
       <div class="panel stack"><h3>Añadir alumnos</h3><label class="f">Pega la lista (un alumno por línea)<textarea id="pastealumnos" rows="8" placeholder="Nombre Apellido1 Apellido2&#10;Lucía García Pérez"></textarea></label><button class="btn primary" data-a="addalumnos">Añadir</button>
-      <p class="small muted">La primera palabra se toma como nombre y el resto como apellidos. Si la lista viene como «Apellidos, Nombre» (con coma), también se entiende. Los nombres compuestos se corrigen luego en sus casillas. Se ordenan por apellido. Si pones <b>números de lista</b>, mandan sobre el orden alfabético (quien no tenga número va detrás, por apellido). Las etiquetas (TDAH, ACIS, PT…) aparecen luego en el modo directo.</p></div></div>`;
+      <p class="small muted">La primera palabra se toma como nombre y el resto como apellidos. Si la lista viene como «Apellidos, Nombre» (con coma), también se entiende. Los nombres compuestos se corrigen luego en sus casillas. Se ordenan por apellido. Si pones <b>números de lista</b>, mandan sobre el orden alfabético (quien no tenga número va detrás, por apellido). Las etiquetas (TDAH, ACIS, PT…) aparecen luego en Anotaciones.</p></div></div>`;
   } else if (t === 'plano') {
     if (!g.alumnos.length) body = `<div class="panel empty">Añade primero los alumnos del grupo.</div>`;
     else {
@@ -2375,7 +2384,7 @@ VIEWS.grupo = () => {
     body = segToggle() + tablaRegistros(g);
   } else if (t === 'seguimiento') {
     const seg = seguimiento(g.id);
-    body = g.alumnos.length ? segToggle() + `<div class="panel"><p class="small muted" style="margin-top:0">Resumen de lo registrado en el modo directo. Escala: sí ${S.config.pesos.val3.si} · a medias ${S.config.pesos.val3.medias} · no ${S.config.pesos.val3.no}. <b>Trabajo en clase</b> es la media de todos sus ítems: cada registro de trabajo diario y cada pregunta del sorteo cuentan como uno más. Cuánto pesa en la nota se decidirá en la evaluación (última fase).</p>
+    body = g.alumnos.length ? segToggle() + `<div class="panel"><p class="small muted" style="margin-top:0">Resumen de lo registrado en Anotaciones. Escala: sí ${S.config.pesos.val3.si} · a medias ${S.config.pesos.val3.medias} · no ${S.config.pesos.val3.no}. <b>Trabajo en clase</b> es la media de todos sus ítems: cada registro de trabajo diario y cada pregunta del sorteo cuentan como uno más. Cuánto pesa en la nota se decidirá en la evaluación (última fase).</p>
       <div class="tablewrap"><table class="data"><tr><th>Alumno</th><th>Faltas</th><th>Just.</th><th>Retrasos</th><th>Deberes</th><th>Trabajo diario</th><th>Preguntas</th><th>Trabajo en clase (media)</th><th>Actitud (1–5)</th><th>Baño</th></tr>
       ${g.alumnos.map(a => { const o = seg[a.id]; return `<tr><td>${numPre(a)}${esc(a.nombre)}${(a.tags || []).map(x => ` <span class="tag">${esc(x)}</span>`).join('')}${a.pendiente ? ` <span class="pill ${a.pendRecuperada ? 'ok' : 'warn'}">Pte. ${esc(a.pendiente)}${a.pendRecuperada ? ' ✓' : ''}</span>` : ''}</td><td class="num">${o.F || ''}</td><td class="num">${o.J || ''}</td><td class="num">${o.R || ''}</td><td class="num">${n1(o.debM)} <span class="tiny muted">(${o.deb.length})</span></td><td class="num">${n1(o.traM)}</td><td class="num">${n1(o.pregM)} <span class="tiny muted">(${o.preg.length})</span></td><td class="num"><b>${n1(o.trabajoClase)}</b></td><td class="num">${n1(o.actM)}${Object.keys(o.actTags).length ? `<div class="tiny" style="text-align:right">${Object.entries(o.actTags).map(([t, c]) => `<span style="color:var(--${ACT_POS.includes(t) ? 'ok' : 'bad'})">${esc(t)}${c > 1 ? ' ×' + c : ''}</span>`).join(' · ')}</div>` : ''}</td><td class="num">${o.bano || ''}</td></tr>`; }).join('')}</table></div></div>` : `<div class="panel empty">Añade alumnos para ver su seguimiento.</div>`;
   } else {
@@ -2426,13 +2435,13 @@ VIEWS.sesion = () => {
   else if (t === 'inicio') body = tabInicio(key, g);
   else if (t === 'preparar') body = tabPreparar(key, g, f);
   else if (t === 'directo') body = tabDirecto(key, g, f, fecha);
-  else if (t === 'sitios') body = tabSitios(g);
+  else if (t === 'desarrollo') body = tabDesarrollo(key, g, f);
   else body = tabCierre(key, g);
   return `<div class="page-head"><div><div class="row small"><a href="#" data-a="go" data-v="plan">‹ Planificación</a>${prev ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(prev.key)}" data-tab="${UI.sesTab}">‹ Anterior<span class="mhide">: ${esc(prev.grupo.nombre)} (${prev.fecha === fecha ? '' : fShort(prev.fecha) + ' '}${esc(prev.franja.inicio)})</span></a>` : ''}${next ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(next.key)}" data-tab="${UI.sesTab}">Siguiente<span class="mhide">: ${esc(next.grupo.nombre)} (${next.fecha === fecha ? '' : fShort(next.fecha) + ' '}${esc(next.franja.inicio)})</span> ›</a>` : ''}</div>
     <h1 style="margin-top:6px">${gchip(g)} <span class="muted" style="font-weight:500">· ${esc(p?.titulo || 'Sin planificar')}</span></h1>
     <div class="sub">${cap(fLong(fecha))} · ${esc(f.inicio)}–${esc(f.fin)}${h?.aula ? ' · Aula ' + esc(h.aula) : ''}${ns ? ` · Sesión ${ns.n} de ${ns.total}` : ''}${p?.unidad ? ' · ' + esc(p.unidad) : ''}</div></div>
     <div class="row">${!p?.sinClase && libroSesion(key)?.b ? `<button class="btn sm primary" data-a="seslibpres">📖 Libro</button>` : ''}${p?.sinClase ? '' : `<button class="btn sm" data-a="desplazar">Desplazar desde aquí</button>`}</div></div>
-    ${p?.sinClase ? '' : `<div class="tabs" role="tablist">${[['inicio', 'Inicio'], ['preparar', 'Preparar'], ['sitios', 'Sitios'], ['directo', 'En directo'], ['cierre', 'Cierre']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="stab" data-v="${v}">${tt}${v === 'cierre' && p?.cierre?.hecho ? ' ✓' : ''}</button>`).join('')}</div>`}${body}`;
+    ${p?.sinClase ? '' : `<div class="tabs" role="tablist">${[['preparar', 'Preparar'], ['inicio', 'Inicio'], ['desarrollo', 'Desarrollo'], ['cierre', 'Cierre'], ['directo', 'Anotaciones']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="stab" data-v="${v}">${tt}${v === 'cierre' && p?.cierre?.hecho ? ' ✓' : ''}</button>`).join('')}</div>`}${body}`;
 };
 
 function tabSitios(g) {
@@ -2664,15 +2673,7 @@ function archivosEditor(key, list, addLabel) {
     <div class="row">${ARCH.assets ? `<button class="btn sm ghost" data-a="subir" data-list="${list}">+ Subir archivo</button>` : ''}<button class="btn sm ghost" data-a="additem" data-list="${list}">+ ${addLabel}</button></div></div>`;
 }
 
-function tabPreparar(key, g, f) {
-  const p = plan(key);
-  const notaAnt = p.notaAnterior ? `<div class="alert info" style="margin-bottom:10px"><span class="grow">📋 <b>Nota del curso anterior</b> (plantilla «${esc(p.plantillaDe || '')}»): ${esc(p.notaAnterior)}</span><button class="iconbtn" data-a="notaantx" aria-label="Quitar la nota">✕</button></div>` : ''; const dur = tmin(f.fin) - tmin(f.inicio); const sum = (p.bloques || []).reduce((s, b) => s + (Number(b.min) || 0), 0);
-  const ideas = ideasPara(key); const sg = p.sug || {};
-
-  const sEsquema = sg.esquema ? `<div class="sugbox"><div class="label">Esquema sugerido</div><pre id="sug-esquema" class="sugpre">${esc(sg.esquema)}</pre>
-      <div class="row"><button class="btn sm primary" data-a="usaresquema">Añadir a la explicación</button><button class="btn sm ghost" data-a="descartar" data-t="esquema">Descartar</button></div></div>` : '';
-  const sActs = (sg.actividades || []).length ? `<div class="sugbox"><div class="label">Actividades sugeridas</div>${sg.actividades.map(a => `<div class="sugitem"><div class="grow"><b>${esc(a.titulo)}</b> <span class="tag">${esc(a.tipo || '')}</span>${a.minutos ? ` <span class="tiny muted">${esc(a.minutos)} min</span>` : ''}<div class="small">${esc(a.descripcion || '')}</div></div><button class="btn sm" data-a="usarsug" data-t="actividades" data-id="${a.id}">Añadir</button></div>`).join('')}<button class="btn sm ghost" data-a="descartar" data-t="actividades">Descartar todas</button></div>` : '';
-  const sRecs = (sg.recursos || []).length ? `<div class="sugbox"><div class="label">Recursos sugeridos</div>${sg.recursos.map(r => `<div class="sugitem"><div class="grow"><b>${esc(r.titulo)}</b> <span class="tag">${esc(r.tipo || '')}</span><div class="small">${esc(r.descripcion || '')}</div>${r.busqueda ? `<a class="small" href="https://www.google.com/search?q=${encodeURIComponent(r.busqueda)}" target="_blank" rel="noopener">Buscar: ${esc(r.busqueda)}</a>` : ''}</div><button class="btn sm" data-a="usarsug" data-t="recursos" data-id="${r.id}">Añadir</button></div>`).join('')}<button class="btn sm ghost" data-a="descartar" data-t="recursos">Descartar todas</button></div>` : '';
+function sugTips(sg) {
   const c = sg.consejos; const li = (arr, fn) => (arr || []).map(fn).join('');
   const qx = (sc, ca, i) => `<button class="iconbtn qx" data-a="quitarsug" data-s="${sc}" data-c="${ca}" data-i="${i}" aria-label="Quitar de la sesión" title="Quitar de la sesión">✕</button>`;
   const consejosHTML = c ? `<div class="tips">
@@ -2691,6 +2692,43 @@ function tabPreparar(key, g, f) {
       ${m.actualidad?.length ? `<div><div class="label">¿Para qué sirve? · Actualidad</div>${li(m.actualidad, (x, i) => `<div class="tip">${qx('motivar', 'actualidad', i)}<b>${esc(x.tema)}</b><div class="small">${esc(x.conexion || '')}</div><a class="small" href="https://www.google.com/search?tbm=nws&q=${encodeURIComponent(x.tema)}" target="_blank" rel="noopener">Buscar noticias recientes</a>${guardarIdea('Noticia', x.tema + ': ' + (x.conexion || ''))}</div>`)}
         <p class="tiny muted" style="margin:4px 0 0">Comprueba que la noticia sigue siendo actual antes de usarla.</p></div>` : ''}
     </div>` : '';
+
+  return { consejosHTML, motivarHTML };
+}
+/* Desarrollo: todo lo preparado, de un vistazo y sin desplegables (solo los apartados con contenido) */
+function tabDesarrollo(key, g, f) {
+  const p = S.planes[key] || {}; const sg = p.sug || {}; const { consejosHTML, motivarHTML } = sugTips(sg);
+  const fij = sec => fijadasHTML(key, sec); const txt = t => (t || '').trim() ? `<div class="p-body" style="white-space:pre-wrap">${esc(t)}</div>` : '';
+  const enl = L => (L || []).filter(it => it.assetId || (it.url || '').trim() || (it.t || '').trim()).map(it => `<div class="row" style="gap:6px">${it.assetId ? `<span class="tag">${it.tipo === 'application/pdf' ? 'PDF' : (it.tipo || '').startsWith('image') ? 'Imagen' : (it.tipo || '').startsWith('video') ? 'Vídeo' : 'Archivo'}</span>` : '<span aria-hidden="true">🔗</span>'}${it.assetId || it.url ? `<a href="${esc(it.assetId ? linkItem(it) : it.url)}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">${esc(it.t || it.url)}</a>` : esc(it.t)}</div>`).join('');
+  const dur = tmin(f.fin) - tmin(f.inicio); const bl = (p.bloques || []).filter(b => (b.fase || '').trim() || Number(b.min));
+  let acum = 0;
+  const S_ = [];
+  if (bl.length) S_.push(['Guion', `<ol class="devguion">${bl.map(b => { const ini = acum; acum += Number(b.min) || 0; return `<li><span class="grow">${esc(b.fase || '')}</span><span class="tiny muted">${Number(b.min) ? `${b.min} min · ${tHM(tmin(f.inicio) + ini)}` : ''}</span></li>`; }).join('')}</ol><div class="tiny muted">${acum} de ${dur} min</div>`]);
+  const ex = fij('explicacion') + txt(p.explicacion) + enl(p.enlaces); if (ex) S_.push(['Explicación', ex]);
+  const co = fij('consejos') + txt(p.consejosNotas) + consejosHTML; if (co) S_.push(['Consejos para explicarlo', co]);
+  const mo = fij('motivar') + txt(p.motivarNotas) + motivarHTML; if (mo) S_.push(['Motivar', mo]);
+  const acts = (p.actividades || []).filter(a => (a.texto || '').trim() || a.archivo || a.creada);
+  const ac = fij('actividades') + (acts.length ? `<ol class="devacts">${acts.map(a => `<li><div><b>${esc(a.texto || (a.creada ? 'Actividad' : ''))}</b>${a.tipo ? ` <span class="tag">${esc(a.tipo)}</span>` : ''}</div>
+      ${a.archivo ? `<div class="small"><a href="_blob/${esc(a.archivo.assetId)}" target="_blank" rel="noopener">📎 ${esc(a.archivo.nombre)}</a></div>` : ''}
+      ${a.creada ? `<div class="row small" style="margin-top:4px"><button class="btn sm ghost" data-a="veract" data-id="${a.id}">📄 Ver ficha</button><button class="btn sm ghost" data-a="proyact" data-id="${a.id}">Proyectar</button></div>` : ''}
+      ${a.solucion ? `<div class="sugbox" style="margin-top:6px"><div class="label">Solucionario</div><div class="small" style="white-space:pre-wrap">${esc(a.solucion)}</div></div>` : ''}</li>`).join('')}</ol>` : '');
+  if (ac) S_.push(['Actividades', ac]);
+  const re = fij('recursos') + enl(p.recursos); if (re) S_.push(['Recursos', re]);
+  if ((p.eventos || []).length) S_.push(['Exámenes y entregas', p.eventos.map(ev => `<div class="row"><span class="pill ${ev.tipo === 'examen' ? 'bad' : 'info'}">${ev.tipo === 'examen' ? 'Examen hoy' : 'Entrega'}</span> <b>${esc(ev.titulo || '')}</b>${ev.tipo === 'entrega' && ev.fecha ? ` <span class="small muted">para el ${fShort(ev.fecha)}</span>` : ''}</div>`).join('')]);
+  const cab = `<div class="panel" style="margin-bottom:14px"><div class="row between"><div><div class="label">${esc(p.unidad || '')}</div><h2 style="margin:2px 0 0">${esc(p.titulo || 'Sin título')}</h2></div><div class="row"><button class="btn sm ghost" data-a="stab" data-v="preparar">Editar en Preparar</button></div></div></div>`;
+  if (!S_.length) return cab + `<div class="panel empty">Todavía no has preparado nada para esta sesión. <a href="#" data-a="stab" data-v="preparar">Ir a Preparar</a></div>`;
+  return cab + `<div class="devgrid">${S_.map(([t, b]) => `<section class="panel dev"><h3>${t}</h3><div class="stack" style="gap:8px">${b}</div></section>`).join('')}</div>`;
+}
+function tabPreparar(key, g, f) {
+  const p = plan(key);
+  const notaAnt = p.notaAnterior ? `<div class="alert info" style="margin-bottom:10px"><span class="grow">📋 <b>Nota del curso anterior</b> (plantilla «${esc(p.plantillaDe || '')}»): ${esc(p.notaAnterior)}</span><button class="iconbtn" data-a="notaantx" aria-label="Quitar la nota">✕</button></div>` : ''; const dur = tmin(f.fin) - tmin(f.inicio); const sum = (p.bloques || []).reduce((s, b) => s + (Number(b.min) || 0), 0);
+  const ideas = ideasPara(key); const sg = p.sug || {};
+
+  const sEsquema = sg.esquema ? `<div class="sugbox"><div class="label">Esquema sugerido</div><pre id="sug-esquema" class="sugpre">${esc(sg.esquema)}</pre>
+      <div class="row"><button class="btn sm primary" data-a="usaresquema">Añadir a la explicación</button><button class="btn sm ghost" data-a="descartar" data-t="esquema">Descartar</button></div></div>` : '';
+  const sActs = (sg.actividades || []).length ? `<div class="sugbox"><div class="label">Actividades sugeridas</div>${sg.actividades.map(a => `<div class="sugitem"><div class="grow"><b>${esc(a.titulo)}</b> <span class="tag">${esc(a.tipo || '')}</span>${a.minutos ? ` <span class="tiny muted">${esc(a.minutos)} min</span>` : ''}<div class="small">${esc(a.descripcion || '')}</div></div><button class="btn sm" data-a="usarsug" data-t="actividades" data-id="${a.id}">Añadir</button></div>`).join('')}<button class="btn sm ghost" data-a="descartar" data-t="actividades">Descartar todas</button></div>` : '';
+  const sRecs = (sg.recursos || []).length ? `<div class="sugbox"><div class="label">Recursos sugeridos</div>${sg.recursos.map(r => `<div class="sugitem"><div class="grow"><b>${esc(r.titulo)}</b> <span class="tag">${esc(r.tipo || '')}</span><div class="small">${esc(r.descripcion || '')}</div>${r.busqueda ? `<a class="small" href="https://www.google.com/search?q=${encodeURIComponent(r.busqueda)}" target="_blank" rel="noopener">Buscar: ${esc(r.busqueda)}</a>` : ''}</div><button class="btn sm" data-a="usarsug" data-t="recursos" data-id="${r.id}">Añadir</button></div>`).join('')}<button class="btn sm ghost" data-a="descartar" data-t="recursos">Descartar todas</button></div>` : '';
+  const { consejosHTML, motivarHTML } = sugTips(sg);
 
   return `${notaAnt}<div class="cols"><div class="stack">
     <div class="panel stack"><div class="fgrid"><label class="f">Título<input type="text" data-f="plan" data-k="titulo" value="${esc(p.titulo)}"></label>
@@ -4116,7 +4154,7 @@ function tablaCal(g, cal, ev) {
   const sub = c => c.sub ? `<span class="tiny muted" style="display:block">${esc(c.sub.nombre)}</span>` : '';
   const h2 = cols.map(c => {
     if (c.t === 'ins') return thIns(cal, c.i, sub(c), c.sub ? 'subh' : '');
-    if (c.t === 'auto') return `<th>${sub(c)}${esc(c.lab)}<span class="tiny muted" style="display:block">del modo directo</span></th>`;
+    if (c.t === 'auto') return `<th>${sub(c)}${esc(c.lab)}<span class="tiny muted" style="display:block">de Anotaciones</span></th>`;
     if (c.t === 'vacio') return `<th>${sub(c)}<button class="btn sm ghost" data-a="calnew" data-nodo="${c.n.id}">+ Añadir</button></th>`;
     if (c.t === 'add') return `<th class="addcol">${c.sub ? '<span class="tiny" style="display:block">&nbsp;</span>' : ''}<button class="iconbtn" data-a="calnew" data-nodo="${c.n.id}" aria-label="Añadir instrumento a ${esc(c.n.nombre)}" title="Añadir instrumento">＋</button></th>`;
     if (c.t === 'nodo') return `<th class="sum">${esc(c.n.nombre)}<span class="tiny muted" style="display:block">${nf(pesoN(cal, c.n, ev))} %</span></th>`;
