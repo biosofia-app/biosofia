@@ -4143,7 +4143,7 @@ function tablaCal(g, cal, ev) {
     return `<td class="${c.t === 'add' ? 'addcol' : ''}"></td>`;
   }).join('');
   const sus = g.alumnos.filter(a => R[a.id].g !== null && R[a.id].g < 5).length;
-  return avisoPesos(cal, ev) + `<div class="row between" style="margin-bottom:10px"><div class="row"><button class="btn primary" data-a="calnew">+ Nuevo instrumento</button><span class="small muted">Escribe la nota (0–10), <b>NP</b> (no presentado, cuenta 0) o <b>EX</b> (exento, no cuenta). Intro baja a la fila siguiente.</span></div>
+  return avisoPesos(cal, ev) + `<div class="row between" style="margin-bottom:10px"><div class="row"><button class="btn primary" data-a="calnew">+ Nuevo instrumento</button><button class="btn" data-a="impabrir">⇩ Importar instrumentos</button><span class="small muted">Escribe la nota (0–10), <b>NP</b> (no presentado, cuenta 0) o <b>EX</b> (exento, no cuenta). Intro baja a la fila siguiente.</span></div>
     <span class="small muted">${sus ? `${sus} con nota menor que 5` : ''}</span></div>
     <div class="panel" style="padding:0"><div class="tablewrap"><table class="nt"><thead><tr><th class="stick" rowspan="2">Alumno</th>${cats.map(c => `<th class="cat" colspan="${c.span}">${esc(c.n.nombre || 'Sin nombre')} <span class="muted">${nf(pesoN(cal, c.n, ev))} %</span></th>`).join('')}${evRecs.map(i => thIns(cal, i, '', '', 2)).join('')}<th class="tot" rowspan="2">Nota<span class="tiny" style="display:block;font-weight:400">${esc(evNombre(ev))}</span></th><th class="tot bol" rowspan="2">Boletín</th></tr><tr>${h2}</tr></thead>
     <tbody>${rows}</tbody><tfoot><tr><td class="stick small muted">Media del grupo</td>${foot}${evRecs.map(i => `<td>${nf(avg(g.alumnos.map(a => notaInstr(cal, i, a.id)?.g)), 1)}</td>`).join('')}<td class="tot">${nf(avg(g.alumnos.map(a => R[a.id].g)), 2)}</td><td class="tot bol">${nf(avg(g.alumnos.map(a => R[a.id].bol)), 1)}</td></tr></tfoot></table></div></div>
@@ -5177,6 +5177,85 @@ function librosPanel(a) {
 }
 
 /* ---------- arranque ---------- */
+/* ===== IMPORTAR INSTRUMENTOS DE EVALUACIÓN de otro grupo o de una plantilla (cursos anteriores) ===== */
+const evIdx = ev => evals().findIndex(e => e.id === ev);
+/* copia de la definición de un instrumento, sin notas, con su categoría y evaluación «portables» */
+function instrPortable(cal, ins) {
+  const H = hojas(cal); const c = JSON.parse(JSON.stringify(ins)); delete c.notas; delete c.rub; delete c.ejemplo;
+  c._path = H.find(h => h.n.id === ins.nodo)?.path || ''; c._evIdx = evIdx(ins.ev);
+  if (String(ins.recupera || '').startsWith('ev:')) c._recEvIdx = evIdx(ins.recupera.slice(3));
+  return c;
+}
+function instrFuentes(gidDest) {
+  const F = [];
+  S.grupos.filter(g => g.id !== gidDest && !esTutoria(g) && (S.cal[g.id]?.instr || []).length).forEach(g => F.push({ k: 'g:' + g.id, nombre: g.nombre, sub: 'grupo de este curso' }));
+  (S.plantillas || []).filter(t => t.instr?.lista?.length).forEach(t => F.push({ k: 'p:' + t.id, nombre: t.nombre, sub: 'plantilla · ' + (t.origen || '') }));
+  return F;
+}
+function instrDeFuente(k) {
+  if (k.startsWith('g:')) { const g = grupo(k.slice(2)); const cal = S.cal[g?.id]; if (!cal) return null; return { curr: cal.curr || '', lista: (cal.instr || []).filter(i => !i.ejemplo || true).map(i => instrPortable(cal, i)), mismoCurso: true }; }
+  const t = (S.plantillas || []).find(x => x.id === k.slice(2)); return t?.instr ? { curr: t.instr.curr || '', lista: t.instr.lista, mismoCurso: false } : null;
+}
+const normPath = s => words(s || '');
+function nodoDestino(H, path, fallback) {
+  const p = normPath(path); const hoja = p.split(' › ').pop();
+  return (H.find(h => normPath(h.path) === p) || H.find(h => normPath(h.n.nombre) === normPath((path || '').split(' › ').pop())) || {}).n?.id || fallback;
+}
+function importarInstrumentos(gDest, src, ids, opt) {
+  const cal = calDe(gDest); const H = hojas(cal); const E = evals(); const mapa = {}; let sinCrit = 0, sinCat = 0;
+  const lista = src.lista.filter(i => ids.includes(i.id));
+  lista.forEach(i => { mapa[i.id] = uid(); });
+  const critOk = c => !!critTexto(cal, c);
+  lista.forEach(i => {
+    const nodo = nodoDestino(H, i._path, null); if (!nodo) sinCat++;
+    const ev = opt.ev === 'mismo' ? (E[i._evIdx]?.id || E[E.length - 1].id) : opt.ev;
+    const crit = (i.crit || []).filter(x => critOk(x.c)); const items = JSON.parse(JSON.stringify(i.items || [])).map(it => ({ ...it, id: it.id, crit: (it.crit || []).filter(critOk) }));
+    if (crit.length < (i.crit || []).length || items.some((it, k) => it.crit.length < ((i.items[k] || {}).crit || []).length)) sinCrit++;
+    let recupera = '';
+    if (String(i.recupera || '').startsWith('ev:')) recupera = 'ev:' + (opt.ev === 'mismo' ? (E[i._recEvIdx]?.id || ev) : ev);
+    else if (i.recupera && mapa[i.recupera]) recupera = mapa[i.recupera];
+    const n = { id: mapa[i.id], nombre: i.nombre, nodo: nodo || opt.nodoDef, ev, fecha: src.mismoCurso && opt.fechas ? (i.fecha || '') : '', modo: i.modo || 'directa', peso: i.peso ?? 1, crit, items, notas: {}, rub: {},
+      recupera, recModo: i.recModo || 'sustituye', recTope: i.recTope ?? '' };
+    if (String(recupera).startsWith('ev:')) n.ev = recupera.slice(3);
+    cal.instr.push(n);
+  });
+  touchCal(gDest.id); return { n: lista.length, sinCrit, sinCat };
+}
+function impModal() {
+  const g = calG(); const cal = calDe(g); const F = instrFuentes(g.id); const D = UI.imp = Object.assign({ src: F[0]?.k || '', ev: 'mismo', sel: null, fechas: true }, UI.imp || {});
+  if (!F.some(f => f.k === D.src)) { D.src = F[0]?.k || ''; D.sel = null; }
+  const src = D.src ? instrDeFuente(D.src) : null; const H = hojas(cal); const E = evals();
+  const yaHay = new Set((cal.instr || []).map(i => words(i.nombre)));
+  if (src && !D.sel) D.sel = src.lista.filter(i => !yaHay.has(words(i.nombre))).map(i => i.id);
+  if (!D.nodoDef || !H.some(h => h.n.id === D.nodoDef)) D.nodoDef = H[0]?.n.id;
+  const mismoCurr = src && (src.curr || '') === (cal.curr || '');
+  const porEv = {}; (src?.lista || []).forEach(i => { const k = i._evIdx; (porEv[k] = porEv[k] || []).push(i); });
+  const sinCoinc = (src?.lista || []).filter(i => D.sel.includes(i.id) && !nodoDestino(H, i._path, null)).length;
+  modal(`<h2>Importar instrumentos de evaluación</h2>
+    <p class="small muted" style="margin-top:0">Copia a ${gchip(g)} instrumentos de otro grupo (por ejemplo, de 1.º A a 1.º B) o de una plantilla de un curso anterior: nombre, categoría, peso, criterios, rúbrica (con sus niveles y notas libres) y recuperaciones. <b>No se copian notas.</b> Las plantillas de planificación guardan también los instrumentos del grupo.</p>
+    ${!F.length ? '<p class="empty">No hay otros grupos con instrumentos ni plantillas con instrumentos.</p><div class="row"><button class="btn" data-a="close">Cerrar</button></div>' : `
+    <div class="fgrid"><label class="f">Copiar de<select data-f="impsrc">${F.map(f => `<option value="${f.k}" ${f.k === D.src ? 'selected' : ''}>${esc(f.nombre)} (${esc(f.sub)})</option>`).join('')}</select></label>
+      <label class="f">Evaluación<select data-f="impev"><option value="mismo" ${D.ev === 'mismo' ? 'selected' : ''}>La misma (1.ª → 1.ª, 2.ª → 2.ª…)</option>${E.map(e => `<option value="${e.id}" ${D.ev === e.id ? 'selected' : ''}>Todos a ${esc(e.nombre)}</option>`).join('')}</select></label></div>
+    ${!mismoCurr ? `<div class="alert warn" style="margin-top:10px">El currículo es distinto: solo se mantienen los criterios que también existen en este grupo; los demás tendrás que vincularlos de nuevo.</div>` : ''}
+    <div class="stack" style="gap:10px;margin:12px 0">${Object.keys(porEv).sort((a, b) => a - b).map(k => `<div><div class="label">${esc(E[k]?.nombre || 'Evaluación ' + (Number(k) + 1))}</div>
+      ${porEv[k].map(i => `<label class="check small" style="display:flex;margin:4px 0"><input type="checkbox" data-f="impsel" value="${i.id}" ${D.sel.includes(i.id) ? 'checked' : ''}><span><b>${esc(i.nombre)}</b> <span class="tiny muted">${esc(i._path || '')} · ${i.modo === 'rubrica' ? 'rúbrica' : 'nota directa'}${i.recupera ? ' · recuperación' : ''}${yaHay.has(words(i.nombre)) ? ' · ya hay uno con este nombre' : ''}${nodoDestino(H, i._path, null) ? '' : ' · ⚠ categoría sin equivalente'}</span></span></label>`).join('')}</div>`).join('')}</div>
+    ${sinCoinc ? `<label class="f" style="max-width:340px">Categoría para los ${sinCoinc} que no tienen equivalente<select data-f="impnodo">${H.map(h => `<option value="${h.n.id}" ${h.n.id === D.nodoDef ? 'selected' : ''}>${esc(h.path)}</option>`).join('')}</select></label>` : ''}
+    ${src?.mismoCurso ? `<label class="check small" style="margin-top:8px"><input type="checkbox" data-f="impfechas" ${D.fechas ? 'checked' : ''}>Mantener las fechas</label>` : ''}
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-a="impok" ${D.sel.length ? '' : 'disabled'}>Importar ${D.sel.length} instrumento${D.sel.length === 1 ? '' : 's'}</button><button class="btn" data-a="close">Cancelar</button></div>`}`, true, 'wide');
+}
+Object.assign(A, {
+  impabrir() { const cal = calC(); if (!hojas(cal).length) { toast('Crea primero una categoría en Configuración'); return; } UI.imp = null; impModal(); },
+  impok() { const g = calG(); const D = UI.imp; const src = instrDeFuente(D.src); if (!src) return; const r = importarInstrumentos(g, src, D.sel, D);
+    UI.imp = null; closeModal(); calRe(); toast(`${r.n} instrumento${r.n === 1 ? '' : 's'} importado${r.n === 1 ? '' : 's'}${r.sinCrit ? ` · revisa los criterios de ${r.sinCrit}` : ''}`); }
+});
+Object.assign(Fd, {
+  impsrc(el) { UI.imp.src = el.value; UI.imp.sel = null; impModal(); },
+  impev(el) { UI.imp.ev = el.value; impModal(); },
+  impnodo(el) { UI.imp.nodoDef = el.value; },
+  impfechas(el) { UI.imp.fechas = el.checked; },
+  impsel(el) { const s = new Set(UI.imp.sel); el.checked ? s.add(el.value) : s.delete(el.value); UI.imp.sel = [...s]; impModal(); }
+});
+
 /* ===== COPIAR UNA SESIÓN ENTRE GRUPOS (misma asignatura en 1.º A, 1.º B…) ===== */
 const CP_FUERA = ['cierre', 'deberesPara', 'resumenInicio', 'sug', 'sinClase', 'motivo', 'notaAnterior', 'plantillaDe'];
 function copiarSesion(srcKey, dstKey) {
@@ -5266,10 +5345,10 @@ function plantillasModal() {
     <div class="panel stack" style="margin:0 0 14px"><h3 style="margin:0">Guardar la planificación de un grupo</h3>
       ${gs.length ? `<div class="fgrid"><label class="f">Grupo<select id="pl-g" data-f="plg">${gs.map(g => `<option value="${g.id}" ${g.id === g0.id ? 'selected' : ''}>${esc(g.nombre)}</option>`).join('')}</select></label>
       <label class="f">Nombre de la plantilla<input type="text" id="pl-n" value="${esc(nomDef)}"></label></div>
-      <p class="small" style="margin:0">${occ.length} clases en el curso · <b>${conPlan}</b> con algo planificado. Se guardan en orden desde la primera sesión planificada hasta la última (también las vacías intermedias, para no descolocar la secuencia), sin las marcadas «no hay clase».</p>
+      <p class="small" style="margin:0">${occ.length} clases en el curso · <b>${conPlan}</b> con algo planificado${(S.cal[g0?.id]?.instr || []).length ? ` · ${S.cal[g0.id].instr.length} instrumentos de evaluación (se guardan también, sin notas)` : ''}. Se guardan en orden desde la primera sesión planificada hasta la última (también las vacías intermedias, para no descolocar la secuencia), sin las marcadas «no hay clase».</p>
       <div class="row"><button class="btn primary" data-a="plguardar" ${conPlan ? '' : 'disabled'}>Guardar como plantilla</button></div>` : '<p class="empty">No tienes grupos.</p>'}</div>
     <h3>Tus plantillas</h3>
-    ${L.length ? `<div class="list">${L.map(t => `<div class="li" style="flex-wrap:wrap;gap:8px"><div class="grow" style="min-width:180px"><b>${esc(t.nombre)}</b><div class="tiny muted">${t.sesiones.length} sesiones (${t.sesiones.filter(tienePlan).length} con contenido) · de ${esc(t.origen || '')} · ${fShort(t.creada.slice(0, 10))}</div></div>
+    ${L.length ? `<div class="list">${L.map(t => `<div class="li" style="flex-wrap:wrap;gap:8px"><div class="grow" style="min-width:180px"><b>${esc(t.nombre)}</b><div class="tiny muted">${t.sesiones.length} sesiones (${t.sesiones.filter(tienePlan).length} con contenido)${t.instr?.lista?.length ? ` · ${t.instr.lista.length} instrumentos de evaluación` : ''} · de ${esc(t.origen || '')} · ${fShort(t.creada.slice(0, 10))}</div></div>
       ${UI.confirm === 'pldel' + t.id ? `<span class="small">¿Borrar la plantilla?</span><button class="btn sm danger" data-a="plborrarok" data-id="${t.id}">Borrar</button><button class="btn sm" data-a="plcancel">No</button>`
         : `<button class="btn sm primary" data-a="plaplicar" data-id="${t.id}">Aplicar a un grupo…</button><button class="btn sm ghost" data-a="plborrar" data-id="${t.id}" aria-label="Borrar plantilla">🗑</button>`}</div>`).join('')}</div>` : '<p class="empty small">Todavía no has guardado ninguna.</p>'}
     <div class="row" style="margin-top:14px"><button class="btn" data-a="close">Cerrar</button></div>`, true, 'wide');
@@ -5314,8 +5393,9 @@ Object.assign(A, {
     while (ses.length && !tienePlan(ses[ses.length - 1])) ses.pop();
     while (ses.length && !tienePlan(ses[0])) ses.shift(); // empieza en la primera sesión planificada
     const nombre = ($('#pl-n')?.value || '').trim() || g.nombre;
-    (S.plantillas = S.plantillas || []).unshift({ id: uid(), nombre, asig: g.asig || '', nivel: g.nivel || '', origen: `${g.nombre}${S.config.curso ? ' · ' + S.config.curso : ''}`, creada: new Date().toISOString(), sesiones: ses });
-    touch('plantillas'); toast(`Plantilla guardada: ${ses.length} sesiones`); plantillasModal(); },
+    const cal = S.cal[g.id]; const instr = cal && (cal.instr || []).length ? { curr: cal.curr || '', lista: cal.instr.map(i => instrPortable(cal, i)) } : null;
+    (S.plantillas = S.plantillas || []).unshift({ id: uid(), nombre, asig: g.asig || '', nivel: g.nivel || '', origen: `${g.nombre}${S.config.curso ? ' · ' + S.config.curso : ''}`, creada: new Date().toISOString(), sesiones: ses, ...(instr ? { instr } : {}) });
+    touch('plantillas'); toast(`Plantilla guardada: ${ses.length} sesiones${instr ? ` y ${instr.lista.length} instrumentos de evaluación` : ''}`); plantillasModal(); },
   plborrar(el) { UI.confirm = 'pldel' + el.dataset.id; plantillasModal(); },
   plcancel() { UI.confirm = null; plantillasModal(); },
   plborrarok(el) { S.plantillas = (S.plantillas || []).filter(t => t.id !== el.dataset.id); UI.confirm = null; touch('plantillas'); toast('Plantilla borrada'); plantillasModal(); },
