@@ -1918,9 +1918,9 @@ const fLongL = (s, lg) => { const T = L10N[lg] || L10N.es; const d = parseD(s); 
 const rel = n => n === 0 ? 'hoy' : n === 1 ? 'mañana' : n === -1 ? 'ayer' : n > 0 ? `en ${n} días` : `hace ${-n} días`;
 const words = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const GCOLORS = [['g1','Malaquita'],['g2','Lapislázuli'],['g3','Ocre'],['g4','Amatista'],['g5','Hematites'],['g6','Olivino'],['g7','Rodocrosita'],['g8','Turquesa'],['g9','Grafito']];
-const TAGS = ['TDAH','ACIS','PT','Nivel adaptado','Nouvingut','Repetidor'];
+const TAGS = ['TDAH','TEA','Dislexia','Altas capacidades','ACIS','PT','Nivel adaptado','Nouvingut','Repetidor'];
 const TAGS_QUITADAS = ['Permiso baño', 'NEAE', 'Lectoescritura'];
-const TAGS_DELANTE = ['TDAH', 'ACIS', 'PT', 'Nouvingut', 'Nivel adaptado'];
+const TAGS_DELANTE = ['TDAH', 'TEA', 'Dislexia', 'ACIS', 'PT', 'Nouvingut', 'Nivel adaptado'];
 function normAlumno(a) { fijarNombre(a); if (a.tags?.length) a.tags = [...new Set(a.tags.map(t => t === 'Recién llegado' ? 'Nouvingut' : t))].filter(t => !TAGS_QUITADAS.includes(t)); const n = parseInt(a.num, 10); if (n > 0) a.num = n; else delete a.num; return a; }
 const VAL3 = { si:'Sí', medias:'A medias', no:'No' };
 const ASIS = { P:'Presente', R:'Retraso', F:'Falta', J:'Justificada' };
@@ -2422,7 +2422,7 @@ VIEWS.grupo = () => {
         <input type="text" placeholder="Observaciones (medidas, permisos…)" value="${esc(a.obs || '')}" data-f="alobs" data-id="${a.id}" style="flex:1"><button class="iconbtn" data-a="delal" data-id="${a.id}" aria-label="Eliminar alumno">✕</button>
         <div class="row" style="width:100%"><input type="text" placeholder="Materia pendiente de otro curso (p. ej. ByG 1.º ESO)" value="${esc(a.pendiente || '')}" data-f="alpend" data-id="${a.id}" style="flex:1;min-width:200px">${a.pendiente ? `<span class="small muted">Recuperada</span><div class="seg"><button data-a="alrecup" data-id="${a.id}" data-v="1" aria-pressed="${!!a.pendRecuperada}">Sí</button><button data-a="alrecup" data-id="${a.id}" data-v="0" aria-pressed="${!a.pendRecuperada}">No</button></div>` : ''}</div></div>`).join('')}</div>` : `<p class="empty">Sin alumnos todavía.</p>`}</div>
       <div class="panel stack"><h3>Añadir alumnos</h3><label class="f">Pega la lista (un alumno por línea)<textarea id="pastealumnos" rows="8" placeholder="Nombre Apellido1 Apellido2&#10;Lucía García Pérez"></textarea></label><button class="btn primary" data-a="addalumnos">Añadir</button>
-      <p class="small muted">La primera palabra se toma como nombre y el resto como apellidos. Si la lista viene como «Apellidos, Nombre» (con coma), también se entiende. Los nombres compuestos se corrigen luego en sus casillas. Se ordenan por apellido. Si pones <b>números de lista</b>, mandan sobre el orden alfabético (quien no tenga número va detrás, por apellido). Las etiquetas (TDAH, ACIS, PT…) aparecen luego en Anotaciones.</p></div></div>`;
+      <p class="small muted">La primera palabra se toma como nombre y el resto como apellidos. Si la lista viene como «Apellidos, Nombre» (con coma), también se entiende. Los nombres compuestos se corrigen luego en sus casillas. Se ordenan por apellido. Si pones <b>números de lista</b>, mandan sobre el orden alfabético (quien no tenga número va detrás, por apellido). Las etiquetas (TDAH, TEA, dislexia, altas capacidades, ACIS, PT…) aparecen luego en Anotaciones.</p></div></div>`;
   } else if (t === 'plano') {
     if (!g.alumnos.length) body = `<div class="panel empty">Añade primero los alumnos del grupo.</div>`;
     else {
@@ -3044,7 +3044,7 @@ function panelReglas(g) {
       <div><div class="label" style="color:var(--bad)">Condicionantes · se cumplen sí o sí</div>${lista('cond')}</div>
       <div><div class="label" style="color:var(--ok)">Preferencias · mejor si se cumplen</div>${lista('pref')}
         <div class="stack" style="gap:4px;margin-top:6px">
-          <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="etiquetasDelante" ${R.etiquetasDelante ? 'checked' : ''}>Alumnado con TDAH, ACIS, PT, nouvingut o nivel adaptado, delante</label>
+          <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="etiquetasDelante" ${R.etiquetasDelante ? 'checked' : ''}>Alumnado con TDAH, TEA, dislexia, ACIS, PT, nouvingut o nivel adaptado, delante</label>
           <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="noRepetir" ${R.noRepetir ? 'checked' : ''}>Que no repitan compañero de mesa del plano actual</label>
           <label class="check small"><input type="checkbox" data-f="reglaglobal" data-k="mezclar" ${R.mezclar ? 'checked' : ''}>Mezclar niveles en cada mesa (según la nota de trabajo en clase)</label></div></div>
     </div>
