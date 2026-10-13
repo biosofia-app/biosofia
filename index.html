@@ -5363,7 +5363,8 @@ Object.assign(Fd, {
 });
 
 /* ===== COPIAR UNA SESIÓN ENTRE GRUPOS (misma asignatura en 1.º A, 1.º B…) ===== */
-const CP_FUERA = ['cierre', 'deberesPara', 'resumenInicio', 'sug', 'sinClase', 'motivo', 'notaAnterior', 'plantillaDe'];
+/* se copia TODO lo preparado (también lo añadido desde el banco: consejos, motivar…, que vive en «sug»); solo se quita lo propio de esa clase concreta */
+const CP_FUERA = ['cierre', 'deberesPara', 'resumenInicio', 'sinClase', 'motivo', 'notaAnterior', 'plantillaDe', 'copiadaDe'];
 function copiarSesion(srcKey, dstKey) {
   const src = S.planes[srcKey]; if (!src) return;
   const prev = S.planes[dstKey];
@@ -5429,8 +5430,8 @@ Object.assign(Fd, {
 /* ===== PLANTILLAS DE PLANIFICACIÓN =====
    Guardan la secuencia de sesiones de un grupo SIN fechas (sesión 1, 2, 3…) y se aplican
    a otro grupo desde una fecha, sesión a sesión por sus clases, aunque el horario sea otro. */
-const PL_FUERA = ['cierre', 'deberesPara', 'resumenInicio', 'sug', 'sinClase', 'motivo', 'notaAnterior', 'plantillaDe'];
-const tienePlan = p => !!p && !p.sinClase && !!((p.titulo || '').trim() || (p.explicacion || '').trim() || (p.actividades || []).length || (p.bloques || []).length || (p.recursos || []).length || (p.eventos || []).length);
+const PL_FUERA = ['cierre', 'deberesPara', 'resumenInicio', 'sinClase', 'motivo', 'notaAnterior', 'plantillaDe', 'copiadaDe'];
+const tienePlan = p => !!p && !p.sinClase && !!((p.titulo || '').trim() || (p.explicacion || '').trim() || (p.actividades || []).length || (p.bloques || []).length || (p.recursos || []).length || (p.eventos || []).length || (p.ideasFijadas || []).length || (p.motivarNotas || '').trim() || (p.consejosNotas || '').trim() || Object.keys(p.sug || {}).length);
 function sesionParaPlantilla(p) {
   const c = JSON.parse(JSON.stringify(p)); PL_FUERA.forEach(k => delete c[k]);
   c.eventos = (c.eventos || []).filter(e => e.tipo === 'examen').map(e => ({ ...e, fecha: '' }));
