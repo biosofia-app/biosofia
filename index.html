@@ -476,6 +476,16 @@ input[type=text],input[type=date],input[type=time],input[type=number],input[type
 .fig.oscura .fighead{background:transparent; color:var(--rosa); border-bottom-color:rgba(255,255,255,.18)}
 .fig.oscura .p-body{font-family:var(--font-h); font-size:1.65rem; line-height:1.2}
 .fig.oscura a{color:#E7E2FF}
+/* dentro del bloque oscuro: las ideas van en tarjetas claras con letra oscura, y los rótulos en rosa */
+.fig.oscura .label, .fig.oscura .tips > div > .label{color:var(--rosa)}
+.fig.oscura .tip, .fig.oscura .pin, .fig.oscura .sugbox{background:var(--surface); color:var(--ink); border-color:transparent}
+.fig.oscura .tip .small, .fig.oscura .pin .small, .fig.oscura .tip .tiny, .fig.oscura .pin .tiny{color:var(--ink-2)}
+.fig.oscura .tip .muted, .fig.oscura .pin .muted{color:var(--muted)}
+.fig.oscura .tip a, .fig.oscura .pin a{color:var(--accent)}
+.fig.oscura .tip .tag, .fig.oscura .pin .tag{background:var(--surface-2); color:var(--ink-2)}
+.fig.oscura .pin{border-left:4px solid var(--rosa)}
+.fig.oscura .muted{color:#CFC8EA}
+.fig.oscura .tip .muted, .fig.oscura .pin .muted{color:var(--muted)}
 .devbar{display:flex; height:8px; margin:2px 0 8px; border-radius:1px; overflow:hidden}
 .devguion li .hand{font-size:1.4rem; margin-right:8px}
 @media (max-width:760px){
