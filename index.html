@@ -251,6 +251,13 @@ details.bcat > summary{cursor:pointer;font-weight:700;font-size:.86rem;color:var
 .tip .qx{float:right;margin:-4px -6px 0 4px;font-size:.8rem}
 /* Materiales */
 .matrow{align-items:center}
+.pnavb{display:inline-flex; gap:4px; flex:none}
+@media (max-width:760px){
+  .plannav{flex-wrap:nowrap; gap:6px; width:100%}
+  .plannav .seg{flex:1 1 auto; min-width:0; flex-wrap:nowrap; padding:2px}
+  .plannav .seg button{flex:1 1 auto; padding:7px 4px; font-size:.8rem; min-width:0}
+  .plannav .pnavb .btn{padding:7px 9px; min-height:36px; font-size:.82rem}
+}
 .matfile{flex-wrap:nowrap; gap:10px}
 .mtag{flex:none; font-family:var(--font-m); font-size:.66rem; font-weight:600; letter-spacing:.04em; padding:3px 0; width:38px; text-align:center; border-radius:2px; border:1px solid currentColor}
 .tg-pdf{color:#B0324F; background:#FBEFF3} .tg-doc{color:#2F5FA8; background:#E4ECF7} .tg-ppt{color:#A55A12; background:#F6EBD3} .tg-xls{color:#2F7D4F; background:#E7F3EC}
@@ -2395,8 +2402,8 @@ VIEWS.plan = () => {
     }).join('')}</div>`;
   }
   return `<div class="page-head"><div><div class="label">Planificación</div><h1>${title}</h1></div>
-    <div class="row"><div class="seg" role="group" aria-label="Vista">${[['rapida', 'Rápida'], ['dia', 'Día'], ['semana', 'Semana'], ['mes', 'Mes']].map(([v, t]) => `<button data-a="pmode" data-v="${v}" aria-pressed="${m === v}">${t}</button>`).join('')}</div>
-    <button class="btn sm" data-a="pnav" data-d="-1" aria-label="Anterior">‹</button><button class="btn sm" data-a="pnav" data-d="0">Hoy</button><button class="btn sm" data-a="pnav" data-d="1" aria-label="Siguiente">›</button></div></div>
+    <div class="row plannav"><div class="seg" role="group" aria-label="Vista">${[['rapida', 'Rápida'], ['dia', 'Día'], ['semana', 'Semana'], ['mes', 'Mes']].map(([v, t]) => `<button data-a="pmode" data-v="${v}" aria-pressed="${m === v}">${t}</button>`).join('')}</div>
+    <div class="pnavb"><button class="btn sm" data-a="pnav" data-d="-1" aria-label="Anterior">‹</button><button class="btn sm" data-a="pnav" data-d="0">Hoy</button><button class="btn sm" data-a="pnav" data-d="1" aria-label="Siguiente">›</button></div></div></div>
     ${body}
     <p class="small muted" style="margin-top:10px">Pulsa una sesión para prepararla. Desde la sesión puedes <b>desplazar la planificación</b> si se pierde una clase.</p>`;
 };
