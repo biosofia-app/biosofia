@@ -3,9 +3,11 @@
    - Sirve los archivos subidos (_blob/<id>) desde Drive u OneDrive con el
      token de la página, y los guarda para verlos sin conexión. */
 'use strict';
-const V = 'biosofia-v20';
+const V = 'biosofia-v21';
 const BLOBS = 'biosofia-blobs';
-const SHELL = ['./', 'index.html', 'nube.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'privacidad.html'];
+const SHELL = ['./', 'index.html', 'nube.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'privacidad.html',
+  'fonts/plex-sans-400.woff', 'fonts/plex-sans-400i.woff', 'fonts/plex-sans-500.woff', 'fonts/plex-sans-600.woff', 'fonts/plex-sans-700.woff',
+  'fonts/plex-mono-400.woff', 'fonts/plex-mono-500.woff', 'fonts/plex-mono-600.woff', 'fonts/caveat-500.woff'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -21,7 +23,6 @@ self.addEventListener('fetch', e => {
   const u = new URL(req.url);
   if (u.origin === location.origin && u.pathname.includes('/_blob/')) { e.respondWith(archivo(req, u, e.clientId)); return; }
   if (u.origin === location.origin) { e.respondWith(redPrimero(req)); return; }
-  if (/^fonts\.(googleapis|gstatic)\.com$/.test(u.hostname)) e.respondWith(cachePrimero(req));
 });
 
 async function redPrimero(req) {
