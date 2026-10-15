@@ -2134,6 +2134,7 @@ function siguienteLectivo(s) { let d = addDays(s, 1), g = 0; while (festivoDe(d)
 function estadoPlan(key) {
   const p = S.planes[key];
   if (p?.sinClase) return { c: 'off', t: 'Sin clase' };
+  if ((p?.eventos || []).some(e => e.tipo === 'examen')) return { c: 'ok', t: 'Examen' }; // un examen no hay que prepararlo como clase
   if (!p || !(p.titulo || '').trim()) return { c: 'bad', t: 'Sin planificar' };
   const lleno = (p.eventos || []).some(e => e.tipo === 'examen') || (p.actividades || []).length || (p.explicacion || '').trim() || (p.bloques || []).length;
   return lleno ? { c: 'ok', t: 'Planificada' } : { c: 'warn', t: 'Solo título' };
@@ -2159,7 +2160,7 @@ function vincularExamenAgenda(a) {
   const o = (a.hora && occ.find(x => x.franja?.inicio === a.hora)) || occ[0];
   const p = plan(o.key);
   const ev = { id: uid(), tipo: 'examen', titulo: a.titulo || 'Examen', fecha: '' };
-  if (!(p.titulo || '').trim()) p.titulo = ev.titulo; // si la sesión ya tenía título, se respeta
+  if ((p.titulo || '').trim() && p.titulo !== ev.titulo) p.tituloPrevio = p.titulo; p.titulo = ev.titulo; // el título de la sesión pasa a ser el del examen
   (p.eventos = p.eventos || []).push(ev);
   Object.assign(a, { planKey: o.key, eventoId: ev.id, hora: a.hora || o.franja?.inicio || '' });
   touchPlan(o.key); touch('agenda');
@@ -2515,6 +2516,8 @@ VIEWS.sesion = () => {
   const h = S.config.horario.find(x => x.grupoId === grupoId && x.franjaId === franjaId && x.dia === dow(fecha));
   const ns = numSesion(key); const p = S.planes[key]; const t = UI.sesTab;
   const prev = sesionCronologica(key, -1), next = sesionCronologica(key, 1);
+  const gPrev = sesionVecina(key, -1), gNext = sesionVecina(key, 1);
+  const tituloDe = o => { const q = S.planes[o.key]; return q?.sinClase ? 'Sin clase' : (q?.titulo || 'Sin planificar'); };
   let body = '';
   if (p?.sinClase) body = `<div class="panel stack"><h3>Sin clase</h3><p>${esc(p.motivo || '')}</p><div class="row"><button class="btn" data-a="consinclase">Volver a marcarla como clase</button></div></div>`;
   else if (t === 'inicio') body = tabInicio(key, g);
@@ -2523,6 +2526,7 @@ VIEWS.sesion = () => {
   else if (t === 'desarrollo') body = tabDesarrollo(key, g, f);
   else body = tabCierre(key, g);
   return `<div class="page-head"><div><div class="row small"><a href="#" data-a="go" data-v="plan">‹ Planificación</a>${prev ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(prev.key)}" data-tab="${UI.sesTab}">‹ Anterior<span class="mhide">: ${esc(prev.grupo.nombre)} (${prev.fecha === fecha ? '' : fShort(prev.fecha) + ' '}${esc(prev.franja.inicio)})</span></a>` : ''}${next ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(next.key)}" data-tab="${UI.sesTab}">Siguiente<span class="mhide">: ${esc(next.grupo.nombre)} (${next.fecha === fecha ? '' : fShort(next.fecha) + ' '}${esc(next.franja.inicio)})</span> ›</a>` : ''}</div>
+    ${gPrev || gNext ? `<div class="row small gnav" style="margin-top:4px;gap:6px">${gchip(g)}<span class="muted" style="margin-left:-4px">:</span>${gPrev ? `<a href="#" data-a="sesion" data-k="${esc(gPrev.key)}" data-tab="${UI.sesTab}" title="${esc(tituloDe(gPrev))}">‹ Anterior<span class="mhide"> de este grupo (${fShort(gPrev.fecha)} · ${esc(tituloDe(gPrev))})</span></a>` : ''}${gPrev && gNext ? '<span class="muted">·</span>' : ''}${gNext ? `<a href="#" data-a="sesion" data-k="${esc(gNext.key)}" data-tab="${UI.sesTab}" title="${esc(tituloDe(gNext))}">Siguiente<span class="mhide"> de este grupo (${fShort(gNext.fecha)} · ${esc(tituloDe(gNext))})</span> ›</a>` : ''}</div>` : ''}
     <h1 style="margin-top:6px">${gchip(g)} <span class="muted" style="font-weight:500">· ${esc(p?.titulo || 'Sin planificar')}</span></h1>
     <div class="sub">${cap(fLong(fecha))} · ${esc(f.inicio)}–${esc(f.fin)}${h?.aula ? ' · Aula ' + esc(h.aula) : ''}${ns ? ` · Sesión ${ns.n} de ${ns.total}` : ''}${p?.unidad ? ' · ' + esc(p.unidad) : ''}</div></div>
     <div class="row">${!p?.sinClase && libroSesion(key)?.b ? `<button class="btn sm primary" data-a="seslibpres">📖 Libro</button>` : ''}${p?.sinClase ? '' : `<button class="btn sm" data-a="desplazar">Desplazar desde aquí</button>`}</div></div>
@@ -5598,7 +5602,7 @@ function avisoInstalarIOS() {
   Nube.alPrefs = () => { if (UI.view === 'ajustes' && !$('#modal').innerHTML) { UI.keepScroll = true; render(); } };
   Nube.antesDeSalir = async () => { clearTimeout(Save.timer); if (Save.dirty.size) await flush(); };
   await Store.init(); ARCH.assets = Nube.archivos;
-  try { hydrate(await Store.loadAll()); try { (S.agenda || []).forEach(vincularExamenAgenda); } catch (e) {} } catch (e) { showBanner('No se han podido cargar tus datos. Recarga la página; si sigue igual, importa tu última copia.'); }
+  try { hydrate(await Store.loadAll()); try { (S.agenda || []).forEach(vincularExamenAgenda); Object.entries(S.planes).forEach(([k, p]) => { const ex = (p?.eventos || []).find(e => e.tipo === 'examen'); if (ex && !(p.titulo || '').trim()) { p.titulo = ex.titulo || 'Examen'; touchPlan(k); } }); } catch (e) {} } catch (e) { showBanner('No se han podido cargar tus datos. Recarga la página; si sigue igual, importa tu última copia.'); }
   if (Store.mode === 'local') showBanner('Estás usando la app sin cuenta: los datos se guardan solo en este navegador. Exporta copias desde Ajustes o entra con tu cuenta desde el botón ⌂ de arriba.');
   Nube.refrescarEstado();
   if (esMovil() && UI.planMode === 'semana') UI.planMode = 'dia';
