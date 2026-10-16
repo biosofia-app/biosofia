@@ -21,12 +21,49 @@ Versión web de BIOSOFÍA: la misma app del artefacto, con inicio de sesión con
 
 | Archivo | Qué es |
 |---|---|
-| `index.html` | La app (la misma del artefacto, adaptada) |
+| `index.html` | La página: cabecera, barras y la lista de scripts que carga, en orden |
+| `estilos.css` | Todo el aspecto: colores, letras, móvil, modo oscuro |
+| `js/` | El código de la app, repartido por secciones (ver **Mapa del código**) |
 | `nube.js` | Inicio de sesión, copia local y sincronización con Drive/OneDrive |
 | `config.js` | **Lo único que hay que editar**: los dos identificadores de cliente |
 | `sw.js` | Hace que la app abra sin conexión y sirve los archivos subidos |
 | `manifest.webmanifest`, `icon*` | Instalación como app |
 | `privacidad.html` | Política de privacidad (Google la pide). Pon tu correo de contacto al final |
+| `fonts/` | Letras de la app (IBM Plex y Caveat) |
+
+## Mapa del código
+
+Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (lo marca el número). Comparten todo entre ellos, como si fueran un solo archivo: una función de `06-sesion.js` puede usar otra de `02-base.js`.
+
+| Archivo | Qué hay | Mira aquí si falla… |
+|---|---|---|
+| `01-banco-ideas.js` | Banco de la app: 95 temas con ideas (solo datos) | Las sugerencias de «Sugerir» |
+| `02-base.js` | Utilidades, idioma del grupo, guardado (Store), estado, calendario, avisos de Hoy, barra del móvil y `render()` | Que no se guarde, fechas y festivos, que no se pinte nada |
+| `03-hoy.js` | Pantalla **Hoy** | Hoy |
+| `04-planificacion.js` | **Planificación**: Rápida, Día, Semana, Mes | Planificación |
+| `05-grupos.js` | **Grupos**: alumnado, seguimiento, datos del grupo | Grupos |
+| `06-sesion.js` | **Sesión**: pestañas, fichas de actividad, Word, archivos, Desarrollo, ideas y banco en la sesión | Cualquier pestaña de la sesión |
+| `07-tutoria-plano.js` | Tutoría, plano de clase y propuesta de sitios | Tutoría, plano |
+| `08-agenda-ideas-ajustes.js` | Pantallas **Agenda**, **Ideas** y **Ajustes** | Esas pantallas |
+| `09-modales-acciones.js` | Ventanas, y qué hace cada botón (`data-a`) y cada campo (`data-f`) | Un botón que no responde |
+| `10-copias-ejemplo.js` | Exportar e importar copia, datos de ejemplo | Copias |
+| `11-curriculo.js` | Currículo LOMLOE (CV): competencias y criterios (solo datos) | Criterios que faltan |
+| `12-calificaciones.js` | **Calificaciones**: cálculo, reglas, rúbricas, competencias, Excel | Notas |
+| `13-materiales.js` | **Materiales**: carpetas y archivos | Materiales |
+| `14-libro.js` | **Libro digital** y su PDF | Libro |
+| `15-importar-copiar-plantillas.js` | Importar instrumentos, copiar sesiones entre grupos, plantillas de planificación | Copiar y plantillas |
+| `16-arranque.js` | Arranque de la app (va el último) | Que la app no abra |
+
+**Si algo no funciona:**
+
+1. Abre la consola del navegador (ordenador: F12 › *Consola*). El error dice el archivo y la línea, por ejemplo `12-calificaciones.js:230`.
+2. Para volver atrás solo ese archivo: en GitHub, abre el archivo › *History* › elige la versión anterior › *View file* › copia su contenido y pégalo en la versión actual (lápiz ✏️) › *Commit changes*.
+
+**Reglas para no romper nada:**
+
+- Un archivo nuevo de `js/` va en **dos sitios**: su `<script>` al final de `index.html` (en orden) y la lista `JS` de `sw.js`. Después, sube el número de `V` en `sw.js`.
+- Una función nueva puede ir en el archivo de su sección. Si se usa al arrancar, tiene que estar en un archivo **anterior** a donde se llama (o dentro de una función, que es lo normal).
+- No cambies el orden de los `<script>`.
 
 ---
 
@@ -96,7 +133,7 @@ Abre `http://localhost:8000`. Para entrar con Google o Microsoft en local añade
 
 ## Actualizar la app
 
-Sustituye los archivos en GitHub (Upload files). La app carga la versión nueva la próxima vez que se abra con conexión. Si cambias la lista de archivos de `sw.js`, sube el número de `V` (`biosofia-v2`…).
+Sustituye los archivos en GitHub (Upload files), **incluida la carpeta `js/`** y `estilos.css`, pero **no `config.js`**. La app carga la versión nueva la próxima vez que se abra con conexión. Si cambias la lista de archivos de `sw.js`, sube el número de `V` (`biosofia-v22`…).
 
 ## Límites conocidos
 

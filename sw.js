@@ -3,9 +3,13 @@
    - Sirve los archivos subidos (_blob/<id>) desde Drive u OneDrive con el
      token de la página, y los guarda para verlos sin conexión. */
 'use strict';
-const V = 'biosofia-v21';
+const V = 'biosofia-v22';
 const BLOBS = 'biosofia-blobs';
-const SHELL = ['./', 'index.html', 'nube.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'privacidad.html',
+/* Al añadir, quitar o renombrar un archivo de la app: ponerlo aquí y subir el número de V */
+const JS = ['01-banco-ideas', '02-base', '03-hoy', '04-planificacion', '05-grupos', '06-sesion', '07-tutoria-plano',
+  '08-agenda-ideas-ajustes', '09-modales-acciones', '10-copias-ejemplo', '11-curriculo', '12-calificaciones',
+  '13-materiales', '14-libro', '15-importar-copiar-plantillas', '16-arranque'].map(n => `js/${n}.js`);
+const SHELL = ['./', 'index.html', 'estilos.css', ...JS, 'nube.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'privacidad.html',
   'fonts/plex-sans-400.woff', 'fonts/plex-sans-400i.woff', 'fonts/plex-sans-500.woff', 'fonts/plex-sans-600.woff', 'fonts/plex-sans-700.woff',
   'fonts/plex-mono-400.woff', 'fonts/plex-mono-500.woff', 'fonts/plex-mono-600.woff', 'fonts/caveat-500.woff'];
 
