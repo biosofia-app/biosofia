@@ -255,5 +255,5 @@ function refrescarRemoto() {
 }
 document.addEventListener('focusout', () => { if (UI.remotoPend) setTimeout(() => { if (!document.activeElement?.matches?.('input,textarea,select') && !$('#modal').innerHTML) { UI.remotoPend = false; UI.keepScroll = true; render(); } }, 300); });
 function escucharCambios() {
-  Nube.alCambiar = (id, data) => { if (aplicarDoc(id, data)) refrescarRemoto(); };
+  Nube.alCambiar = (id, data) => { if (aplicarDoc(id, data)) { dhRemoto(id); refrescarRemoto(); } };
 }

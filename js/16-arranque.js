@@ -13,7 +13,7 @@ function avisoInstalarIOS() {
   Nube.alEstado = (t, err) => setSaveState(t, err);
   Nube.alPrefs = () => { if (UI.view === 'ajustes' && !$('#modal').innerHTML) { UI.keepScroll = true; render(); } };
   Nube.antesDeSalir = async () => { clearTimeout(Save.timer); if (Save.dirty.size) await flush(); };
-  await Store.init(); ARCH.assets = Nube.archivos;
+  await Store.init(); ARCH.assets = dhEnvolverArchivos(Nube.archivos);
   try { hydrate(await Store.loadAll()); try { (S.agenda || []).forEach(vincularExamenAgenda); Object.entries(S.planes).forEach(([k, p]) => { const ex = (p?.eventos || []).find(e => e.tipo === 'examen'); if (ex && !(p.titulo || '').trim()) { p.titulo = ex.titulo || 'Examen'; touchPlan(k); } }); } catch (e) {} } catch (e) { showBanner('No se han podido cargar tus datos. Recarga la página; si sigue igual, importa tu última copia.'); }
   if (Store.mode === 'local') showBanner('Estás usando la app sin cuenta: los datos se guardan solo en este navegador. Exporta copias desde Ajustes o entra con tu cuenta desde el botón ⌂ de arriba.');
   Nube.refrescarEstado();

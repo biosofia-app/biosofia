@@ -38,7 +38,7 @@ Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (l
 | Archivo | Qué hay | Mira aquí si falla… |
 |---|---|---|
 | `01-banco-ideas.js` | Banco de la app: 95 temas con ideas (solo datos) | Las sugerencias de «Sugerir» |
-| `02-base.js` | Utilidades, idioma del grupo, guardado (Store), estado, calendario, avisos de Hoy, barra del móvil y `render()` | Que no se guarde, fechas y festivos, que no se pinte nada |
+| `02-base.js` | Utilidades, idioma del grupo, guardado (Store), estado, **Deshacer**, calendario, avisos de Hoy, barra del móvil y `render()` | Que no se guarde, Deshacer, fechas y festivos, que no se pinte nada |
 | `03-hoy.js` | Pantalla **Hoy** | Hoy |
 | `04-planificacion.js` | **Planificación**: Rápida, Día, Semana, Mes | Planificación |
 | `05-grupos.js` | **Grupos**: alumnado, seguimiento, datos del grupo | Grupos |

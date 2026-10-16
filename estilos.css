@@ -371,6 +371,11 @@ table.data td.num{text-align:right}
 .sumbar > span{display:block; height:100%; background:var(--accent)}
 .sumbar.over > span{background:var(--bad)}
 .toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--surface); padding:9px 16px; border-radius:9px; z-index:80; font-weight:700; font-size:.9rem}
+.toast-dh{display:flex; align-items:center; gap:14px; width:max-content; max-width:calc(100% - 32px); padding:6px 6px 6px 16px; background:var(--barra); color:var(--barra-ink); border:1px solid rgba(255,255,255,.22); box-shadow:0 6px 20px rgba(0,0,0,.28); text-align:left}
+.toast-dh span{flex:1 1 auto; min-width:0}
+.toast-dh .toast-btn{flex:0 0 auto}
+.toast-btn{border:0; background:none; color:var(--rosa); font:600 .78rem var(--font-m); text-transform:uppercase; letter-spacing:.06em; padding:8px 10px; border-radius:6px; cursor:pointer; min-height:36px}
+.toast-btn:hover,.toast-btn:focus-visible{background:rgba(255,255,255,.12); outline:none}
 .welcome{max-width:640px}
 .welcome p{color:var(--ink-2)}
 /* Calificaciones: cuaderno de notas (alumnos × instrumentos), editor de árbol de pesos, rúbricas 1–4 */

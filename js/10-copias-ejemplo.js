@@ -28,7 +28,7 @@ async function aplicarImport() {
 async function borrarTodo() {
   const ids = allDocIds(); for (const id of ids) { try { await Store.remove(id); } catch (e) {} }
   S = { config: DEFAULT_CONFIG(), grupos: [], agenda: [], ideas: [], pendientes: [], pendgrupo: {}, planes: {}, regs: {}, cal: {}, materiales: { asigs: [] }, libros: {} };
-  UI.confirm = null; UI.view = 'hoy'; toast('Datos borrados'); render();
+  dhIniciar(); UI.confirm = null; UI.view = 'hoy'; toast('Datos borrados'); render();
 }
 
 /* ---------- datos de ejemplo (inventados) ---------- */

@@ -94,7 +94,7 @@ const Store = {
   async init() { await Nube.iniciar(); },
   loadAll() { return Nube.cargarTodo(); },
   write(id, data) { return Nube.guardar(id, data); },
-  remove(id) { return Nube.borrar(id); }
+  remove(id) { dhMarcar([id]); return Nube.borrar(id); }
 };
 
 /* ---------- estado ---------- */
@@ -133,6 +133,7 @@ function hydrate(docs) {
     if (id.startsWith('cal_') && docs[id] && docs[id].arbol) S.cal[id.slice(4)] = docs[id];
     if (id.startsWith('libro_') && docs[id] && docs[id].id) S.libros[docs[id].id] = docs[id];
   });
+  dhIniciar();
 }
 function docData(id) {
   if (id === 'config') return S.config;
@@ -149,7 +150,7 @@ function docData(id) {
 }
 /* guardado con espera: una escritura a la vez por documento */
 const Save = { dirty: new Set(), timer: null, busy: false, err: false };
-function touch(...ids) { ids.forEach(i => Save.dirty.add(i)); clearTimeout(Save.timer); Save.timer = setTimeout(flush, 700); setSaveState('Guardando…'); }
+function touch(...ids) { ids.forEach(i => Save.dirty.add(i)); dhMarcar(ids); clearTimeout(Save.timer); Save.timer = setTimeout(flush, 700); setSaveState('Guardando…'); }
 const touchPlan = k => touch('plan_' + mondayOf(k.split('|')[1]));
 const touchReg = k => touch('reg_' + mondayOf(k.split('|')[1]));
 async function flush() {
@@ -181,6 +182,130 @@ function allDocIds() {
   Object.keys(S.libros || {}).forEach(b => ids.add('libro_' + b));
   return [...ids];
 }
+
+/* ---------- deshacer ----------
+   Cada acción de un toque (un clic en un botón con data-a) que cambia datos se puede deshacer.
+   - base: cómo quedó cada documento tras la última acción (JSON). Al terminar una acción se compara
+     con cómo está ahora; lo que cambió se guarda en la pila con su versión anterior.
+   - Deshacer = volver a poner esa versión anterior en el estado y guardarla como un cambio normal.
+   - Lo que se escribe en los campos no entra en la pila (para eso está el deshacer del propio navegador),
+     pero sí actualiza la base, para que deshacer un clic posterior no borre lo escrito.
+   - Los archivos subidos que se borran (Materiales, sesiones, libro) no se borran de Drive hasta pasados
+     10 minutos, para poder recuperarlos al deshacer. */
+const Deshacer = { base: new Map(), pila: [], pend: new Set(), timer: null, accion: null, n: 0, restaurando: false, msg: null, archPend: [] };
+const DH_MAX = 20, DH_ARCH_MS = 10 * 60 * 1000;
+/* clics que no se ofrecen para deshacer: navegación y operaciones que ya piden confirmación y sustituyen todo */
+const DH_NO = new Set(['borrar-ok', 'imp-ok', 'ejemplo', 'quitarejemplo']);
+/* texto del aviso cuando la acción no muestra el suyo */
+const DH_TXT = { tapal: 'Anotado', 'delgrupo-ok': 'Grupo borrado', delidea: 'Idea borrada', delag: 'Tarea borrada', delitem: 'Borrado', delev: 'Borrado',
+  additem: 'Añadido', addev: 'Añadido', usaridea: 'Idea añadida', usarsug: 'Idea añadida', bancoadd: 'Añadido a la sesión', desfijar: 'Idea quitada', quitarsug: 'Quitado' };
+function dhVacio(id) {
+  if (id === 'config') return JSON.stringify(DEFAULT_CONFIG());
+  if (id === 'materiales') return JSON.stringify({ asigs: [] });
+  if (/^(plan|reg)_/.test(id) || id === 'pendgrupo') return '{"map":{}}';
+  if (/^(cal|libro)_/.test(id)) return '{}';
+  return '{"list":[]}';
+}
+function dhIniciar() {
+  clearTimeout(Deshacer.timer); Deshacer.timer = null; Deshacer.pend.clear(); Deshacer.pila = []; Deshacer.base.clear();
+  for (const id of allDocIds()) Deshacer.base.set(id, JSON.stringify(docData(id)));
+  dhArchivosVencidos();
+}
+function dhMarcar(ids) {
+  ids.forEach(i => Deshacer.pend.add(i));
+  if (Deshacer.timer) return;
+  /* tras un clic se cierra enseguida; al escribir se agrupa para no comparar en cada tecla */
+  Deshacer.timer = setTimeout(dhCerrar, Deshacer.accion ? 0 : 600);
+}
+function dhCerrar() {
+  clearTimeout(Deshacer.timer); Deshacer.timer = null;
+  const ids = [...Deshacer.pend]; Deshacer.pend.clear();
+  const antes = new Map();
+  for (const id of ids) {
+    const ahora = JSON.stringify(docData(id));
+    const prev = Deshacer.base.has(id) ? Deshacer.base.get(id) : dhVacio(id);
+    if (prev !== ahora) antes.set(id, prev);
+    Deshacer.base.set(id, ahora);
+  }
+  const arch = Deshacer.archPend.splice(0);
+  if (Deshacer.restaurando) { Deshacer.restaurando = false; arch.forEach(dhArchivoProgramar); return; }
+  const ac = Deshacer.accion;
+  if (!antes.size || !ac || DH_NO.has(ac.a)) { arch.forEach(dhArchivoProgramar); return; }
+  const ult = Deshacer.pila[Deshacer.pila.length - 1];
+  if (ult && ult.t === ac.t) { antes.forEach((v, id) => { if (!ult.antes.has(id)) ult.antes.set(id, v); }); ult.archivos.push(...arch); }
+  else {
+    Deshacer.pila.push({ t: ac.t, antes, archivos: arch });
+    while (Deshacer.pila.length > DH_MAX) Deshacer.pila.shift().archivos.forEach(dhArchivoProgramar);
+  }
+  arch.forEach(dhArchivoProgramar);
+  const texto = Deshacer.msg && Deshacer.msg.t === ac.t ? Deshacer.msg.texto : (DH_TXT[ac.a] || (/^del/.test(ac.a) ? 'Borrado' : 'Hecho'));
+  toastDeshacer(texto);
+}
+/* cada clic empieza una acción nueva; escribir en un campo, ninguna */
+function dhEmpezar(a) {
+  if (Deshacer.timer || Deshacer.pend.size) dhCerrar();
+  Deshacer.accion = a ? { a, t: ++Deshacer.n } : null;
+}
+function deshacer() {
+  if (Deshacer.timer || Deshacer.pend.size) dhCerrar();
+  const e = Deshacer.pila.pop();
+  if (!e) { toast('No hay nada que deshacer'); return; }
+  const ids = [...e.antes.keys()];
+  e.antes.forEach((json, id) => { Save.dirty.delete(id); aplicarDoc(id, JSON.parse(json)); });
+  e.archivos.forEach(a => dhArchivoCancelar(a.id));
+  Deshacer.restaurando = true; touch(...ids); dhCerrar();
+  if (UI.view === 'grupo' && UI.grupoId && !grupo(UI.grupoId)) UI.view = 'grupos';
+  UI.keepScroll = true; render();
+  if (UI.agModalDay && $('#modal').innerHTML && typeof refreshAgModal === 'function') try { refreshAgModal(); } catch (err) {}
+  toast('Deshecho');
+}
+/* un cambio que llega de otro dispositivo pasa a ser la nueva base y ya no se deshace desde aquí */
+function dhRemoto(id) {
+  Deshacer.base.set(id, JSON.stringify(docData(id)));
+  Deshacer.pila.forEach(e => e.antes.delete(id));
+  Deshacer.pila = Deshacer.pila.filter(e => e.antes.size);
+}
+function toastDeshacer(texto) {
+  document.querySelectorAll('.toast').forEach(x => x.remove());
+  const el = document.createElement('div'); el.className = 'toast toast-dh'; el.setAttribute('role', 'status');
+  el.innerHTML = `<span>${esc(texto)}</span><button type="button" class="toast-btn">Deshacer</button>`;
+  el.querySelector('button').onclick = ev => { ev.stopPropagation(); el.remove(); deshacer(); };
+  document.body.appendChild(el); setTimeout(() => el.remove(), 7000);
+}
+/* archivos: el borrado real espera DH_ARCH_MS; la lista se guarda en el dispositivo por si se cierra la app */
+function dhArchivosLeer() { try { return JSON.parse(localStorage.getItem('bs:borrar-archivos') || '[]'); } catch (e) { return []; } }
+function dhArchivosGuardar(l) { try { localStorage.setItem('bs:borrar-archivos', JSON.stringify(l)); } catch (e) {} }
+function dhEnvolverArchivos(base) {
+  if (!base) return base;
+  Deshacer.archBase = base;
+  const w = Object.create(base);
+  w.delete = id => { if (!id) return Promise.resolve(); Deshacer.archPend.push({ id, t: Date.now() }); if (!Deshacer.timer) dhMarcar([]); return Promise.resolve(); };
+  setTimeout(dhArchivosVencidos, 5000);
+  return w;
+}
+function dhArchivoProgramar(a) { const l = dhArchivosLeer(); if (!l.some(x => x.id === a.id)) { l.push(a); dhArchivosGuardar(l); } setTimeout(dhArchivosVencidos, DH_ARCH_MS + 1000); }
+function dhArchivoCancelar(id) { dhArchivosGuardar(dhArchivosLeer().filter(x => x.id !== id)); }
+function dhArchivosVencidos() {
+  const base = Deshacer.archBase; if (!base) return;
+  const ahora = Date.now(), enPila = new Set(Deshacer.pila.flatMap(e => e.archivos.map(a => a.id)));
+  const l = dhArchivosLeer(), quedan = [];
+  for (const a of l) {
+    if (ahora - a.t >= DH_ARCH_MS && !enPila.has(a.id)) base.delete(a.id).catch(() => {});
+    else quedan.push(a);
+  }
+  if (quedan.length !== l.length) dhArchivosGuardar(quedan);
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest?.('[data-a]');
+  if (el && el.closest('.toast-dh')) return;
+  dhEmpezar(el && typeof A !== 'undefined' && A[el.dataset.a] ? el.dataset.a : null);
+}, true);
+['input', 'change'].forEach(t => document.addEventListener(t, () => { if (Deshacer.accion) dhEmpezar(null); }, true));
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return;
+  if (e.target.closest?.('input,textarea,select,[contenteditable="true"]')) return;
+  e.preventDefault(); deshacer();
+});
 
 /* ---------- modelo: calendario ---------- */
 const grupo = id => S.grupos.find(g => g.id === id);

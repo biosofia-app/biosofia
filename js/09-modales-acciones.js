@@ -2,7 +2,7 @@
 /* ---------- modales ---------- */
 function modal(html, still, cls) { $('#modal').innerHTML = `<div class="modal-bg" data-a="closebg"><div class="modal ${cls || ''}" role="dialog" aria-modal="true" ${still ? 'style="animation:none"' : ''}>${html}</div></div>`; }
 function closeModal() { $('#modal').innerHTML = ''; UI.agModalDay = null; UI.bi = null; if (UI.cr) { UI.cr.ctl?.abort(); UI.cr = null; } }
-function toast(t) { document.querySelectorAll('.toast').forEach(x => x.remove()); const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
+function toast(t) { Deshacer.msg = { t: Deshacer.accion?.t, texto: t }; document.querySelectorAll('.toast').forEach(x => x.remove()); const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
 
 function sortear() {
   const key = UI.sesion; const g = grupo(parseKey(key).grupoId); const r = reg(key);
