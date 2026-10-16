@@ -7,8 +7,9 @@ VIEWS.agenda = () => {
   const byDay = {}; S.agenda.forEach(a => { if (a.fecha) (byDay[a.fecha] = byDay[a.fecha] || []).push(a); });
   Object.values(byDay).forEach(l => l.sort((a, b) => (a.done - b.done) || (a.hora || '99').localeCompare(b.hora || '99')));
   const venc = S.agenda.filter(a => !a.done && a.fecha && a.fecha < hoy).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const sinF = S.agenda.filter(a => !a.done && !a.fecha);
   const prox = S.agenda.filter(a => !a.done && a.fecha >= hoy && a.fecha <= addDays(hoy, 14)).sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.hora || '').localeCompare(b.hora || ''));
-  const item = a => `<div class="li"><input type="checkbox" data-f="agdone" data-id="${a.id}" ${a.done ? 'checked' : ''} aria-label="Hecho"><button class="grow" data-a="agday" data-d="${a.fecha}" style="border:0;background:none;text-align:left;cursor:pointer;padding:0"><b>${esc(a.titulo)}</b>
+  const item = a => `<div class="li"><input type="checkbox" data-f="agdone" data-id="${a.id}" ${a.done ? 'checked' : ''} aria-label="Hecho"><button class="grow" ${a.fecha ? `data-a="agday" data-d="${a.fecha}"` : ''} style="border:0;background:none;text-align:left;cursor:pointer;padding:0"><b>${esc(a.titulo)}</b>
     <div class="small muted">${fShort(a.fecha)} · ${rel(diffDays(hoy, a.fecha))}${a.hora ? ' · ' + esc(a.hora) : ''}${a.grupoId ? ' · ' + esc(grupo(a.grupoId)?.nombre || '') : ''}${a.tipo !== 'tarea' ? ' · ' + TIPOS_AG[a.tipo] : ''}</div></button></div>`;
   return `<div class="page-head"><div><div class="label">Agenda</div><h1>${cap(MESES[m.getMonth()])} ${m.getFullYear()}</h1><div class="sub">Pulsa un día para apuntar algo. Los avisos salen en «Hoy» el día antes y el mismo día.</div></div>
     <div class="row"><button class="btn sm" data-a="agnav" data-d="-1" aria-label="Mes anterior">‹</button><button class="btn sm" data-a="agnav" data-d="0">Hoy</button><button class="btn sm" data-a="agnav" data-d="1" aria-label="Mes siguiente">›</button></div></div>
@@ -22,6 +23,7 @@ VIEWS.agenda = () => {
   <div class="stack">
     ${venc.length ? `<div class="panel"><h3>Vencidas <span class="muted small">${venc.length}</span></h3><div class="list">${venc.map(item).join('')}</div></div>` : ''}
     <div class="panel"><h3>Próximos 14 días</h3>${prox.length ? `<div class="list">${prox.map(item).join('')}</div>` : '<p class="empty">Nada apuntado.</p>'}</div>
+    ${sinF.length ? `<div class="panel"><h3>Sin fecha <span class="muted small">${sinF.length}</span></h3><div class="list">${sinF.map(item).join('')}</div></div>` : ''}
     <p class="tiny muted">La app no envía notificaciones al móvil (harían falta un servidor): los avisos se ven al abrirla.</p>
   </div></div>`;
 };
@@ -49,7 +51,7 @@ function refreshAgModal() { if (UI.agModalDay && $('#modal').innerHTML) agModal(
 VIEWS.ideas = () => {
   const F = UI.ideasF; const q = words(F.q);
   const list = S.ideas.filter(i => (!F.tipo || i.tipo === F.tipo) && (!F.apt || apartadoIdea(i) === F.apt) && (!F.sin || !(i.etiquetas || []).length) && (!q || words([i.titulo, i.texto, (i.etiquetas || []).join(' ')].join(' ')).includes(q))).sort((a, b) => (b.creada || '').localeCompare(a.creada || ''));
-  return `<div class="page-head"><div><div class="label">Banco de ideas</div><h1>Ideas</h1><div class="sub">Apunta aquí actividades, anécdotas, noticias o datos curiosos. Cada idea va a un apartado de la sesión (consejos, motivación, actividades o recursos) y te aparecerá al pulsar «Sugerir» en ese apartado si los temas coinciden con sus etiquetas.</div></div>
+  return `<div class="page-head"><div><div class="label">Banco de ideas</div><h1>Ideas</h1><div class="sub">Apunta aquí actividades, anécdotas, noticias o datos curiosos. Cada idea va a un apartado de la sesión (cómo contarlo, actividades o recursos) y te aparecerá al pulsar «Sugerir» en ese apartado si los temas coinciden con sus etiquetas.</div></div>
     <div class="row"><button class="btn sm" data-a="expideas">Exportar ideas</button><button class="btn sm" data-a="impideas">Importar ideas</button></div></div>
   <div class="cols"><div class="stack">
     <div class="row"><input type="search" placeholder="Buscar" value="${esc(F.q)}" data-f="ideasq" style="max-width:260px"><select data-f="ideasapt" style="max-width:230px" aria-label="Apartado"><option value="">Todos los apartados</option>${APARTADOS.map(([k, t]) => `<option value="${k}" ${F.apt === k ? 'selected' : ''}>${t}</option>`).join('')}</select><select data-f="ideastipo" style="max-width:200px"><option value="">Todos los tipos</option>${TIPOS_IDEA.map(t => `<option ${F.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select>

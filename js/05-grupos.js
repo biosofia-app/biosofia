@@ -5,7 +5,7 @@ VIEWS.grupos = () => {
   return `<div class="page-head"><div><div class="label">Mis grupos</div><h1>Grupos</h1><div class="sub">Cada grupo es una materia con un curso concreto. Su horario se define en Ajustes.</div></div>
     <button class="btn primary" data-a="nuevogrupo">Nuevo grupo</button></div>
     ${S.grupos.length ? `<div class="cards">${S.grupos.map(g => {
-      const next = ocurrencias(g.id, hoy, addDays(hoy, 30))[0]; const pg = pendGrupo(g.id).filter(p => !p.done).length;
+      const next = ocurrencias(g.id, hoy, addDays(hoy, 30))[0]; const pg = tareasGrupo(g.id, hoy).length;
       return `<button class="card click" data-a="go" data-v="grupo" data-g="${g.id}"><div class="stripe" style="background:var(--${g.color || 'g1'})"></div>
         <h3>${esc(g.nombre)} ${g.ejemplo ? pill('info', 'Ejemplo') : ''}${g.asig ? '' : ' ' + pill('warn', 'Elige asignatura')}</h3><div class="small muted">${esc(g.materia || '')}${g.nivel ? ' · ' + esc(g.nivel) : ''} · ${IDIOMAS[g.idioma || 'es']}</div>
         <div class="small">${g.alumnos.length} alumnos · ${S.config.horario.filter(h => h.grupoId === g.id).length} h/semana</div>
@@ -73,8 +73,9 @@ VIEWS.grupo = () => {
       <div><div class="label" style="margin-bottom:6px">Color</div><div class="row">${GCOLORS.map(([c, n]) => `<label class="check small"><input type="radio" name="gcolor" data-f="gcolor" value="${c}" ${g.color === c ? 'checked' : ''}><span class="dot" style="background:var(--${c})"></span>${n}${S.grupos.some(x => x.id !== g.id && x.color === c) ? ' <span class="tiny muted">(en uso)</span>' : ''}</label>`).join('')}</div></div>
       <hr>${UI.confirm === 'delgrupo' ? `<div class="alert bad"><span class="grow">Se borrarán el grupo, su horario, sus sesiones planificadas, sus registros y sus calificaciones. Podrás deshacerlo justo después. Si quieres reutilizar la planificación el curso que viene, guárdala antes como plantilla (Planificación › Rápida › 📋 Plantillas).</span><button class="btn sm danger" data-a="delgrupo-ok">Borrar</button><button class="btn sm" data-a="cancel">Cancelar</button></div>` : `<button class="btn danger" data-a="confirm" data-c="delgrupo" style="align-self:flex-start">Borrar grupo</button>`}</div>`;
   }
+  if (t === 'evaluacion') body = esTutoria(g) ? '' : vistaEvaluacion(g);
   return `<div class="page-head"><div><a href="#" data-a="go" data-v="grupos" class="small">‹ Grupos</a><h1 style="margin-top:4px">${gchip(g)}</h1><div class="sub">${esc(g.materia || '')}${g.nivel ? ' · ' + esc(g.nivel) : ''} · ${IDIOMAS[g.idioma || 'es']} · ${g.alumnos.length} alumnos</div></div>${esTutoria(g) ? '' : `<button class="btn" data-a="calgo" data-g="${g.id}">Calificaciones ›</button>`}</div>
-    <div class="tabs" role="tablist">${[['alumnado', 'Alumnado'], ['plano', 'Plano de clase'], ['seguimiento', 'Seguimiento'], ...(esTutoria(g) ? [['tutoria', 'Tutoría']] : []), ['datos', 'Datos del grupo']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="gtab" data-v="${v}">${tt}</button>`).join('')}</div>${body}`;
+    <div class="tabs" role="tablist">${[['alumnado', 'Alumnado'], ['plano', 'Plano de clase'], ['seguimiento', 'Seguimiento'], ...(esTutoria(g) ? [['tutoria', 'Tutoría']] : [['evaluacion', 'Evaluación']]), ['datos', 'Datos del grupo']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="gtab" data-v="${v}">${tt}</button>`).join('')}</div>${body}`;
 };
 
 const segToggle = () => `<div class="row between" style="margin-bottom:12px"><div class="seg">${[['resumen', 'Resumen'], ['sesiones', 'Por sesiones (editable)']].map(([v, t]) => `<button data-a="segvista" data-v="${v}" aria-pressed="${(UI.segVista || 'resumen') === v}">${t}</button>`).join('')}</div></div>`;

@@ -30,6 +30,7 @@ Versión web de BIOSOFÍA: la misma app del artefacto, con inicio de sesión con
 | `manifest.webmanifest`, `icon*` | Instalación como app |
 | `privacidad.html` | Política de privacidad (Google la pide). Pon tu correo de contacto al final |
 | `fonts/` | Letras de la app (IBM Plex y Caveat) |
+| `vendor/` | Librerías incluidas en la app para anotar PDF: PDF.js (Mozilla, licencia Apache 2.0) y pdf-lib (licencia MIT). Solo se cargan al abrir un PDF |
 
 ## Mapa del código
 
@@ -39,10 +40,10 @@ Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (l
 |---|---|---|
 | `01-banco-ideas.js` | Banco de la app: 95 temas con ideas (solo datos) | Las sugerencias de «Sugerir» |
 | `02-base.js` | Utilidades, idioma del grupo, guardado (Store), estado, **Deshacer**, calendario, avisos de Hoy, barra del móvil y `render()` | Que no se guarde, Deshacer, fechas y festivos, que no se pinte nada |
-| `03-hoy.js` | Pantalla **Hoy** | Hoy |
-| `04-planificacion.js` | **Planificación**: Rápida, Día, Semana, Mes | Planificación |
-| `05-grupos.js` | **Grupos**: alumnado, seguimiento, datos del grupo | Grupos |
-| `06-sesion.js` | **Sesión**: pestañas, fichas de actividad, Word, archivos, Desarrollo, ideas y banco en la sesión | Cualquier pestaña de la sesión |
+| `03-hoy.js` | Pantalla **Hoy**: avisos, tareas, línea del día | Hoy |
+| `04-planificacion.js` | **Planificación**: Rápida, Semana (lista de días en el móvil), Mes | Planificación |
+| `05-grupos.js` | **Grupos**: alumnado, seguimiento, datos del grupo (y la pestaña Evaluación) | Grupos |
+| `06-sesion.js` | **Sesión**: 4 pestañas (Preparar · En clase · Anotaciones · Cierre), pestaña según la hora, secciones ocultables, «Cómo contarlo», fichas de actividad, Word, archivos | Cualquier pestaña de la sesión |
 | `07-tutoria-plano.js` | Tutoría, plano de clase y propuesta de sitios | Tutoría, plano |
 | `08-agenda-ideas-ajustes.js` | Pantallas **Agenda**, **Ideas** y **Ajustes** | Esas pantallas |
 | `09-modales-acciones.js` | Ventanas, y qué hace cada botón (`data-a`) y cada campo (`data-f`) | Un botón que no responde |
@@ -52,7 +53,12 @@ Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (l
 | `13-materiales.js` | **Materiales**: carpetas y archivos | Materiales |
 | `14-libro.js` | **Libro digital** y su PDF | Libro |
 | `15-importar-copiar-plantillas.js` | Importar instrumentos, copiar sesiones entre grupos, plantillas de planificación | Copiar y plantillas |
-| `16-arranque.js` | Arranque de la app (va el último) | Que la app no abra |
+| `16-buscar.js` | **Búsqueda global** (lupa, Ctrl+K o «/») | La búsqueda |
+| `17-evaluacion.js` | **Informe para la sesión de evaluación** (Grupos › Evaluación) e impresión de zonas | Ese informe, imprimir |
+| `18-familias.js` | **Informe para la familia**, con frases en castellano y valenciano | Ese informe |
+| `19-programacion.js` | **Programación exportable** (Planificación › Programación), PDF y Word | La programación |
+| `20-pdf.js` | **Anotar sobre PDF**: visor, herramientas y PDF con anotaciones | Anotar |
+| `21-arranque.js` | Arranque de la app (va el último) | Que la app no abra |
 
 **Si algo no funciona:**
 
@@ -133,7 +139,7 @@ Abre `http://localhost:8000`. Para entrar con Google o Microsoft en local añade
 
 ## Actualizar la app
 
-Sustituye los archivos en GitHub (Upload files), **incluida la carpeta `js/`** y `estilos.css`, pero **no `config.js`**. La app carga la versión nueva la próxima vez que se abra con conexión. Si cambias la lista de archivos de `sw.js`, sube el número de `V` (`biosofia-v22`…).
+Sustituye los archivos en GitHub (Upload files), **incluida la carpeta `js/`** y `estilos.css`, pero **no `config.js`**. La app carga la versión nueva la próxima vez que se abra con conexión. Si cambias la lista de archivos de `sw.js`, sube el número de `V` (ahora `biosofia-v24`).
 
 ## Límites conocidos
 

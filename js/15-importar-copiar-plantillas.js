@@ -244,6 +244,7 @@ function aplicarDoc(id, data) {
   else if (id === 'plantillas') S.plantillas = data?.list || [];
   else if (id.startsWith('libro_')) { if (data && data.id) S.libros[id.slice(6)] = data; else delete S.libros[id.slice(6)]; }
   else if (id.startsWith('cal_')) { if (data && data.arbol) S.cal[id.slice(4)] = data; else delete S.cal[id.slice(4)]; }
+  else if (id.startsWith('anot_')) { S.anot = S.anot || {}; if (data && data.pages) S.anot[id.slice(5)] = data; else delete S.anot[id.slice(5)]; }
   else if (id.startsWith('plan_') || id.startsWith('reg_')) { const src = id.startsWith('plan_') ? S.planes : S.regs; const wk = id.slice(id.indexOf('_') + 1);
     Object.keys(src).forEach(k => { if (mondayOf(k.split('|')[1]) === wk) delete src[k]; }); Object.assign(src, data?.map || {}); }
   else return false;
@@ -255,5 +256,5 @@ function refrescarRemoto() {
 }
 document.addEventListener('focusout', () => { if (UI.remotoPend) setTimeout(() => { if (!document.activeElement?.matches?.('input,textarea,select') && !$('#modal').innerHTML) { UI.remotoPend = false; UI.keepScroll = true; render(); } }, 300); });
 function escucharCambios() {
-  Nube.alCambiar = (id, data) => { if (aplicarDoc(id, data)) { dhRemoto(id); refrescarRemoto(); } };
+  Nube.alCambiar = (id, data) => { if (aplicarDoc(id, data)) { dhRemoto(id); if (id === 'pendgrupo' && migrarPendientes()) dhRemoto('agenda'); refrescarRemoto(); } };
 }

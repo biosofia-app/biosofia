@@ -71,8 +71,8 @@ function cargarEjemplo() {
       touchPlan(x.key);
     });
   });
-  G.forEach(g => (S.pendgrupo[g.id] = S.pendgrupo[g.id] || []).push({ id: uid(), t: 'Corregir deberes: actividades 5 y 6 de la pág. 52', done: false, creado: dm1 }));
-  S.pendgrupo[G[1].id].push({ id: uid(), t: 'Recoger autorizaciones de la salida al Parque Natural', done: false, creado: dm1 });
+  G.forEach(g => nuevaTareaClase(g.id, 'Corregir deberes: actividades 5 y 6 de la pág. 52', siguienteClase(g.id, dm1) || dm1, { creado: dm1, ejemplo: true }));
+  nuevaTareaClase(G[1].id, 'Recoger autorizaciones de la salida al Parque Natural', siguienteClase(G[1].id, dm1) || dm1, { creado: dm1, ejemplo: true });
   const ag = (o) => S.agenda.push(Object.assign({ id: uid(), done: false, comunicado: false, ejemplo: true, hora: '', notas: '', recordar: { antes: true, mismo: true } }, o));
   ag({ titulo: 'Examen UD 3', tipo: 'examen', grupoId: G[1].id, fecha: ocurrencias(G[1].id, addDays(d0, 5), addDays(d0, 20))[0]?.fecha || addDays(d0, 7) });
   ag({ titulo: 'Entrega informe de laboratorio', tipo: 'entrega', grupoId: G[0].id, fecha: addDays(d0, 3), comunicado: true });

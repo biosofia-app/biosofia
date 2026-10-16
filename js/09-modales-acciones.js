@@ -79,10 +79,14 @@ const A = {
   dia(el) { const d = +el.dataset.d; UI.date = d === 0 ? todayStr() : addDays(UI.date, d); if (d) { let g = 0; while (dow(UI.date) > 5 && g++ < 3) UI.date = addDays(UI.date, d); } render(); },
   pmode(el) { UI.planMode = el.dataset.v; render(); },
   pnav(el) { const d = +el.dataset.d; if (!d) UI.planDate = todayStr(); else if (UI.planMode === 'semana') UI.planDate = addDays(UI.planDate, 7 * d); else if (UI.planMode === 'rapida') { const x = parseD(UI.planDate); UI.planDate = ymd(new Date(x.getFullYear(), x.getMonth() + d, 1)); } else if (UI.planMode === 'dia') { UI.planDate = addDays(UI.planDate, d); let g = 0; while (dow(UI.planDate) > 5 && g++ < 3) UI.planDate = addDays(UI.planDate, d); } else { const x = parseD(UI.planDate); UI.planDate = ymd(new Date(x.getFullYear(), x.getMonth() + d, 1)); } render(); },
-  verdia(el) { UI.planMode = 'dia'; UI.planDate = el.dataset.d; render(); },
+  verdia(el) { UI.planMode = 'semana'; UI.planDate = el.dataset.d; render(); },
   sesion(el) { closeModal(); UI.sesion = el.dataset.k; UI.view = 'sesion'; const { fecha } = parseKey(UI.sesion); const hoy = todayStr();
-    UI.sesTab = el.dataset.tab || (fecha === hoy ? 'inicio' : fecha < hoy ? 'preparar' : 'preparar'); UI.liveMode = 'capa'; render(); scrollA(0); },
-  stab(el) { UI.sesTab = el.dataset.v; render(); },
+    UI.sesTab = tabNorm(el.dataset.tab || tabPorHora(UI.sesion)); UI.liveMode = 'capa'; render(); scrollA(0); },
+  secoculta(el) { S.config.prepOcultas = [...new Set([...(S.config.prepOcultas || []), el.dataset.id])]; touch('config'); UI.keepScroll = true; render(); toast('Sección oculta mientras esté vacía'); },
+  secfija(el) { S.config.prepOcultas = (S.config.prepOcultas || []).filter(x => x !== el.dataset.id); touch('config'); UI.keepScroll = true; render(); toast('Sección visible en todas las sesiones'); },
+  secver(el) { UI.secMostrar = UI.secMostrar || {}; const k = UI.sesion + ':' + el.dataset.id; UI.secMostrar[k] = true; UI.secOpen[k] = true; UI.keepScroll = true; render(); },
+  planificardia(el) { UI.view = 'plan'; UI.planMode = 'semana'; UI.planDate = el.dataset.d; render(); scrollA(0); },
+  stab(el) { UI.sesTab = tabNorm(el.dataset.v); render(); },
   gtab(el) { UI.grupoTab = el.dataset.v; UI.confirm = null; render(); },
   vertodas() { UI.verTodas = !UI.verTodas; render(); },
   capa(el) { UI.capa = el.dataset.v; UI.liveMode = 'capa'; render(); },
@@ -146,7 +150,7 @@ const A = {
   closebg(el, e) { if (e.target === el && !UI.cr) closeModal(); },
   proyectar() { proyectar(); },
   cerrarproy() { document.querySelectorAll('.projector').forEach(x => x.remove()); UI.pres = null; },
-  addpend() { const v = $('#newpend').value.trim(); if (!v) return; const gid = parseKey(UI.sesion).grupoId; (S.pendgrupo[gid] = S.pendgrupo[gid] || []).push({ id: uid(), t: v, done: false, creado: parseKey(UI.sesion).fecha }); touch('pendgrupo'); render(); },
+  addpend() { const v = $('#newpend').value.trim(); if (!v) return; const { grupoId, fecha } = parseKey(UI.sesion); nuevaTareaClase(grupoId, v, fecha, { origen: UI.sesion, creado: fecha }); touch('agenda'); toast('Añadido'); render(); },
   additem(el) { const p = plan(UI.sesion); const l = el.dataset.list; (p[l] = p[l] || []).push(l === 'actividades' ? { id: uid(), texto: '', tipo: 'Individual' } : { id: uid() }); touchPlan(UI.sesion); UI.keepScroll = true; render(); },
   delitem(el) { const p = plan(UI.sesion); const l = el.dataset.list; const it = (p[l] || []).find(x => x.id === el.dataset.id); if (it?.assetId && ARCH.assets) ARCH.assets.delete(it.assetId).catch(() => {}); if (it?.archivo?.assetId && ARCH.assets) ARCH.assets.delete(it.archivo.assetId).catch(() => {}); p[l] = (p[l] || []).filter(x => x.id !== el.dataset.id); touchPlan(UI.sesion); UI.keepScroll = true; render(); },
   usaridea(el) { const i = S.ideas.find(x => x.id === el.dataset.id); if (!i) return; fijarIdea(el.dataset.k || UI.sesion, i, el.dataset.apt || apartadoIdea(i)); },
@@ -170,11 +174,11 @@ const A = {
     const key = UI.sesion; const p = plan(key); const { grupoId, fecha } = parseKey(key); const c = p.cierre || {};
     const estado = c.estado || 'completa'; const pend = $('#c-pend')?.value.trim() || '';
     p.deberes = $('#c-deberes').value.trim(); p.deberesPara = $('#c-debpara')?.value || ''; const deb = !!p.deberes;
-    const L = S.pendgrupo[grupoId] = S.pendgrupo[grupoId] || [];
-    if (estado !== 'completa' && pend && c.pendAdded !== pend) { L.push({ id: uid(), t: 'Terminar: ' + pend, done: false, creado: fecha, origen: key }); c.pendAdded = pend; }
-    if (deb && p.deberes && c.debAdded !== p.deberes) { L.push({ id: uid(), t: 'Corregir deberes: ' + p.deberes, done: false, creado: fecha, origen: key }); c.debAdded = p.deberes; }
+    const prox = siguienteClase(grupoId, fecha), extra = { origen: key, creado: fecha };
+    if (estado !== 'completa' && pend && c.pendAdded !== pend) { nuevaTareaClase(grupoId, 'Terminar: ' + pend, prox, extra); c.pendAdded = pend; }
+    if (deb && p.deberes && c.debAdded !== p.deberes) { nuevaTareaClase(grupoId, 'Corregir deberes: ' + p.deberes, p.deberesPara ? parseKey(p.deberesPara).fecha || prox : prox, extra); c.debAdded = p.deberes; }
     p.cierre = Object.assign(c, { estado, visto: $('#c-visto').value.trim(), pendiente: pend, deberes: deb, dificultades: $('#c-dif').value.trim(), nota: $('#c-nota').value.trim(), hecho: true, en: todayStr() });
-    touchPlan(key); touch('pendgrupo'); toast('Guardado'); render();
+    touchPlan(key); touch('agenda'); toast('Guardado'); render();
   },
   addag() { const t = $('#ag-t').value.trim(); if (!t) { $('#ag-t').focus(); return; }
     S.agenda.push({ id: uid(), titulo: t, tipo: $('#ag-tipo').value, grupoId: $('#ag-g').value || null, fecha: UI.agModalDay, hora: $('#ag-h').value, notas: $('#ag-n').value.trim(), done: false, comunicado: false, recordar: { semana: $('#ag-r7').checked, tres: $('#ag-r3').checked, antes: $('#ag-r1').checked, mismo: $('#ag-r0').checked } });
@@ -193,7 +197,7 @@ const A = {
   subiract(el) { UI.uploadList = 'act:' + el.dataset.id; $('#fileup').click(); },
   delactfile(el) { const p = plan(UI.sesion); const it = p.actividades.find(x => x.id === el.dataset.id); if (it?.archivo?.assetId && ARCH.assets) ARCH.assets.delete(it.archivo.assetId).catch(() => {}); delete it.archivo; touchPlan(UI.sesion); UI.keepScroll = true; render(); },
   delsol(el) { const p = plan(UI.sesion); const it = p.actividades.find(x => x.id === el.dataset.id); if (it) delete it.solucion; touchPlan(UI.sesion); UI.keepScroll = true; render(); },
-  fuentes(el) { const k = UI.sesion + ':' + el.dataset.t; UI.fuentes[k] = !UI.fuentes[k]; UI.secOpen[k] = true; UI.keepScroll = true; render(); },
+  fuentes(el) { const k = UI.sesion + ':' + el.dataset.t; UI.fuentes[k] = !UI.fuentes[k]; UI.secOpen[UI.sesion + ':' + secDe(el.dataset.t)] = true; UI.keepScroll = true; render(); },
   bancoadd(el) { bancoAnadir(el.dataset.t, el.dataset.tema, +el.dataset.i); },
   usaresquema() { const p = plan(UI.sesion); p.explicacion = (p.explicacion ? p.explicacion.trimEnd() + '\n\n' : '') + p.sug.esquema; delete p.sug.esquema; touchPlan(UI.sesion); toast('Esquema añadido'); UI.keepScroll = true; render(); },
   descartar(el) { const p = plan(UI.sesion); if (p.sug) delete p.sug[el.dataset.t]; touchPlan(UI.sesion); UI.keepScroll = true; render(); },
@@ -289,7 +293,7 @@ const Fd = {
   pev(el) { const p = plan(UI.sesion); const ev = (p.eventos || []).find(e => e.id === el.dataset.id); if (ev) { if (ev.tipo === 'examen' && el.dataset.k === 'titulo' && p.titulo === ev.titulo) { p.titulo = el.value; const t = document.querySelector('input[data-f="plan"][data-k="titulo"]'); if (t) t.value = el.value; } ev[el.dataset.k] = el.value; syncEvento(UI.sesion, ev); touchPlan(UI.sesion); } },
   plist(el) { const p = plan(UI.sesion); const it = (p[el.dataset.list] || []).find(x => x.id === el.dataset.id); if (it) { it[el.dataset.k] = el.value; touchPlan(UI.sesion); } },
   pgdone(el) { const L = S.pendgrupo[el.dataset.g] || []; const it = L.find(x => x.id === el.dataset.id); if (it) { it.done = el.checked; it.doneEn = el.checked ? (el.dataset.k || todayStr()) : null; touch('pendgrupo'); } },
-  agdone(el) { if (UI.view === 'sesion' && UI.sesTab === 'cierre') guardarBorradorCierre(); const a = S.agenda.find(x => x.id === el.dataset.id); if (a) { a.done = el.checked; touch('agenda'); UI.keepScroll = true; setTimeout(() => { render(); refreshAgModal(); }, 150); } },
+  agdone(el) { if (UI.view === 'sesion' && UI.sesTab === 'cierre') guardarBorradorCierre(); const a = S.agenda.find(x => x.id === el.dataset.id); if (a) { a.done = el.checked; a.doneEn = el.checked ? (el.dataset.k || todayStr()) : null; touch('agenda'); UI.keepScroll = true; setTimeout(() => { render(); refreshAgModal(); }, 150); } },
   comunicado(el) { const a = S.agenda.find(x => x.id === el.dataset.id); if (a) { a.comunicado = el.checked; touch('agenda'); } },
   alnum(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); const n = parseInt(el.value, 10); if (n > 0) a.num = n; else delete a.num; touch('grupos'); },
   alnombre(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); a[el.dataset.k] = el.value.trim(); a.nombre = [a.pila, a.apellidos].filter(Boolean).join(' '); touch('grupos'); },

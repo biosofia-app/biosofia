@@ -4,24 +4,43 @@ VIEWS.sesion = () => {
   const key = UI.sesion; const { grupoId, fecha, franjaId } = parseKey(key); const g = grupo(grupoId); const f = franja(franjaId);
   if (!g || !f) { UI.view = 'hoy'; return VIEWS.hoy(); }
   const h = S.config.horario.find(x => x.grupoId === grupoId && x.franjaId === franjaId && x.dia === dow(fecha));
-  const ns = numSesion(key); const p = S.planes[key]; const t = UI.sesTab;
+  const ns = numSesion(key); const p = S.planes[key]; const t = UI.sesTab = tabNorm(UI.sesTab);
   const prev = sesionCronologica(key, -1), next = sesionCronologica(key, 1);
   const gPrev = sesionVecina(key, -1), gNext = sesionVecina(key, 1);
   const tituloDe = o => { const q = S.planes[o.key]; return q?.sinClase ? 'Sin clase' : (q?.titulo || 'Sin planificar'); };
   let body = '';
   if (p?.sinClase) body = `<div class="panel stack"><h3>Sin clase</h3><p>${esc(p.motivo || '')}</p><div class="row"><button class="btn" data-a="consinclase">Volver a marcarla como clase</button></div></div>`;
-  else if (t === 'inicio') body = tabInicio(key, g);
+  else if (t === 'clase') body = tabClase(key, g, f);
   else if (t === 'preparar') body = tabPreparar(key, g, f);
   else if (t === 'directo') body = tabDirecto(key, g, f, fecha);
-  else if (t === 'desarrollo') body = tabDesarrollo(key, g, f);
   else body = tabCierre(key, g);
   return `<div class="page-head"><div><div class="row small"><a href="#" data-a="go" data-v="plan">‹ Planificación</a>${prev ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(prev.key)}" data-tab="${UI.sesTab}">‹ Anterior<span class="mhide">: ${esc(prev.grupo.nombre)} (${prev.fecha === fecha ? '' : fShort(prev.fecha) + ' '}${esc(prev.franja.inicio)})</span></a>` : ''}${next ? `<span class="muted">·</span><a href="#" data-a="sesion" data-k="${esc(next.key)}" data-tab="${UI.sesTab}">Siguiente<span class="mhide">: ${esc(next.grupo.nombre)} (${next.fecha === fecha ? '' : fShort(next.fecha) + ' '}${esc(next.franja.inicio)})</span> ›</a>` : ''}</div>
     ${gPrev || gNext ? `<div class="row small gnav" style="margin-top:4px;gap:6px">${gchip(g)}<span class="muted" style="margin-left:-4px">:</span>${gPrev ? `<a href="#" data-a="sesion" data-k="${esc(gPrev.key)}" data-tab="${UI.sesTab}" title="${esc(tituloDe(gPrev))}">‹ Anterior<span class="mhide"> de este grupo (${fShort(gPrev.fecha)} · ${esc(tituloDe(gPrev))})</span></a>` : ''}${gPrev && gNext ? '<span class="muted">·</span>' : ''}${gNext ? `<a href="#" data-a="sesion" data-k="${esc(gNext.key)}" data-tab="${UI.sesTab}" title="${esc(tituloDe(gNext))}">Siguiente<span class="mhide"> de este grupo (${fShort(gNext.fecha)} · ${esc(tituloDe(gNext))})</span> ›</a>` : ''}</div>` : ''}
     <h1 style="margin-top:6px">${gchip(g)} <span class="muted" style="font-weight:500">· ${esc(p?.titulo || 'Sin planificar')}</span></h1>
     <div class="sub">${cap(fLong(fecha))} · ${esc(f.inicio)}–${esc(f.fin)}${h?.aula ? ' · Aula ' + esc(h.aula) : ''}${ns ? ` · Sesión ${ns.n} de ${ns.total}` : ''}${p?.unidad ? ' · ' + esc(p.unidad) : ''}</div></div>
     <div class="row">${!p?.sinClase && libroSesion(key)?.b ? `<button class="btn sm primary" data-a="seslibpres">📖 Libro</button>` : ''}${p?.sinClase ? '' : `<button class="btn sm" data-a="desplazar">Desplazar desde aquí</button>`}</div></div>
-    ${p?.sinClase ? '' : `<div class="tabs" role="tablist">${[['preparar', '01 Preparar'], ['inicio', '02 Inicio'], ['desarrollo', '03 Desarrollo'], ['cierre', '04 Cierre'], ['directo', '05 Anotaciones']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="stab" data-v="${v}">${tt}${v === 'cierre' && p?.cierre?.hecho ? ' ✓' : ''}</button>`).join('')}</div>`}${body}`;
+    ${p?.sinClase ? '' : `<div class="tabs" role="tablist">${[['preparar', '01 Preparar'], ['clase', '02 En clase'], ['directo', '03 Anotaciones'], ['cierre', '04 Cierre']].map(([v, tt]) => `<button role="tab" aria-selected="${t === v}" data-a="stab" data-v="${v}">${tt}${v === 'cierre' && p?.cierre?.hecho ? ' ✓' : ''}</button>`).join('')}</div>`}${body}`;
 };
+
+/* «En clase»: arriba, lo del inicio (deberes, sesión anterior, fechas, pendientes) en una franja plegable; debajo, todo lo preparado */
+function tabClase(key, g, f) {
+  const k = key + ':inicio'; const open = UI.secOpen[k] ?? true;
+  return `<details class="panel sec inicio-fr" data-sec="inicio" ${open ? 'open' : ''}><summary><span class="sec-t">Al empezar</span><span class="small muted">${inicioResumen(key, g)}</span></summary><div class="sec-b">${tabInicio(key, g)}</div></details>${tabDesarrollo(key, g, f)}`;
+}
+function inicioResumen(key, g) {
+  const { fecha } = parseKey(key); const n = [deberesPara(key).length && 'deberes que revisar', fechasGrupo(g.id, fecha).length && 'fechas próximas', tareasGrupo(g.id, fecha).length && tareasGrupo(g.id, fecha).length + ' pendientes'].filter(Boolean);
+  return n.length ? n.join(' · ') : 'sesión anterior';
+}
+/* las antiguas pestañas «Inicio» y «Desarrollo» son ahora «En clase» */
+const tabNorm = t => (t === 'inicio' || t === 'desarrollo') ? 'clase' : (['preparar', 'clase', 'directo', 'cierre'].includes(t) ? t : 'preparar');
+/* pestaña al abrir una sesión según la hora: antes → Preparar, durante → En clase, después → Cierre (o En clase si ya está cerrada) */
+function tabPorHora(key) {
+  const { fecha, franjaId } = parseKey(key); const f = franja(franjaId); const hoy = todayStr(); const p = S.planes[key];
+  if (fecha > hoy || !f) return 'preparar';
+  const fin = fecha < hoy || nowMin() >= tmin(f.fin);
+  if (fin) return p?.cierre?.hecho ? 'clase' : 'cierre';
+  return nowMin() >= tmin(f.inicio) - 5 ? 'clase' : 'preparar';
+}
 
 function tabSitios(g) {
   if (!g.plano || !Object.keys(g.plano.asientos || {}).length) return `<div class="panel stack" style="max-width:560px"><h3>Todavía no hay plano de clase</h3><p class="muted" style="margin:0">Cuando lo hagas en el grupo, aquí verás cómo se sienta este grupo.</p><button class="btn primary" data-a="go" data-v="grupo" data-g="${g.id}" data-gt="plano" style="align-self:flex-start">Hacer el plano de ${esc(g.nombre)}</button></div>`;
@@ -59,7 +78,7 @@ function fechasGrupo(gid, desde) { return S.agenda.filter(a => a.grupoId === gid
 function tabInicio(key, g) {
   const { fecha } = parseKey(key); const r = resumenAnterior(key); const p = plan(key);
   const resumen = p.resumenInicio ?? (r?.txt || '');
-  const fechas = fechasGrupo(g.id, fecha); const pend = pendGrupo(g.id).filter(x => !x.done || x.doneEn === key);
+  const fechas = fechasGrupo(g.id, fecha); const pend = tareasGrupo(g.id, fecha, key);
   const debs = deberesPara(key);
   const regHoy = S.regs[key]; const revisados = regHoy && Object.keys(regHoy.deberes || {}).length;
   return `<div class="cols"><div class="stack">
@@ -74,9 +93,9 @@ function tabInicio(key, g) {
         <label class="check small"><input type="checkbox" data-f="comunicado" data-id="${a.id}" ${a.comunicado ? 'checked' : ''}>Comunicado</label></div>`).join('')}</div>` : `<p class="empty">No hay exámenes ni entregas en los próximos 30 días. Se añaden en la Agenda con este grupo.</p>`}</div>
   </div><div class="stack">
     <div class="panel"><h3>Pendientes del grupo</h3>
-      ${pend.length ? `<div class="list">${pend.map(x => `<div class="li"><input type="checkbox" data-f="pgdone" data-g="${g.id}" data-id="${x.id}" data-k="${esc(key)}" ${x.done ? 'checked' : ''} aria-label="Hecho"><div class="grow">${esc(x.t)}<div class="tiny muted">desde ${fShort(x.creado || fecha)}</div></div></div>`).join('')}</div>` : `<p class="empty">Nada pendiente.</p>`}
+      ${pend.length ? `<div class="list">${pend.map(x => `<div class="li"><input type="checkbox" data-f="agdone" data-id="${x.id}" data-k="${esc(key)}" ${x.done ? 'checked' : ''} aria-label="Hecho"><div class="grow">${esc(x.titulo)}<div class="tiny muted">${TIPOS_AG[x.tipo]}${x.fecha ? (x.fecha < fecha ? ' · desde ' + fShort(x.fecha) : ' · para hoy') : ' · sin fecha'}</div></div></div>`).join('')}</div>` : `<p class="empty">Nada pendiente.</p>`}
       <div class="row" style="margin-top:10px"><input type="text" id="newpend" placeholder="Añadir pendiente (p. ej. decir fecha de examen)" class="grow"><button class="btn sm" data-a="addpend">Añadir</button></div>
-      <p class="tiny muted">Lo que no marques pasa a la siguiente sesión del grupo.</p></div>
+      <p class="tiny muted">Lo que no marques pasa a la siguiente sesión del grupo. Todo queda también en tu Agenda.</p></div>
   </div></div>`;
 }
 
@@ -232,13 +251,27 @@ async function subirArchivo(file, lista) {
 const linkItem = it => it.assetId ? `_blob/${it.assetId}` : it.url;
 
 /* sección plegable */
+/* Preparar más ligero: las secciones que ocultas (Ajustes del docente, S.config.prepOcultas) no salen mientras estén vacías */
+const SECS_PREP = [['guion', 'Guion'], ['explicacion', 'Explicación'], ['contar', 'Cómo contarlo'], ['actividades', 'Actividades'], ['recursos', 'Recursos'], ['eventos', 'Exámenes y entregas']];
+const prepOcultas = () => S.config.prepOcultas || [];
+const secVisible = id => !prepOcultas().includes(id) || secLleno(id) || UI.secMostrar?.[UI.sesion + ':' + id];
+function secLleno(id) {
+  const p = S.planes[UI.sesion] || {}; const sg = p.sug || {};
+  return !!({ guion: (p.bloques || []).length, explicacion: (p.explicacion || '').trim() || (p.enlaces || []).length || sg.esquema,
+    consejos: sg.consejos || (p.consejosNotas || '').trim(), motivar: sg.motivar || (p.motivarNotas || '').trim(), contar: sg.consejos || sg.motivar || (p.consejosNotas || '').trim() || (p.motivarNotas || '').trim(), actividades: (p.actividades || []).length || (sg.actividades || []).length,
+    recursos: (p.recursos || []).length || (sg.recursos || []).length, eventos: (p.eventos || []).length }[id] || (p.ideasFijadas || []).some(f => f.apt === id || (id === 'contar' && (f.apt === 'consejos' || f.apt === 'motivar'))));
+}
 function sec(id, title, body, extra = '') {
-  const k = UI.sesion + ':' + id; const p = S.planes[UI.sesion] || {}; const sg = p.sug || {};
-  const lleno = { guion: (p.bloques || []).length, explicacion: (p.explicacion || '').trim() || (p.enlaces || []).length || sg.esquema,
-    consejos: sg.consejos || (p.consejosNotas || '').trim(), motivar: sg.motivar || (p.motivarNotas || '').trim(), actividades: (p.actividades || []).length || (sg.actividades || []).length,
-    recursos: (p.recursos || []).length || (sg.recursos || []).length, eventos: (p.eventos || []).length }[id] || (p.ideasFijadas || []).some(f => f.apt === id);
-  const open = UI.secOpen[k] ?? !!lleno;
-  return `<details class="panel sec" data-sec="${id}" ${open ? 'open' : ''}><summary><span class="sec-t">${title}</span><span class="row" style="gap:6px">${extra}</span></summary><div class="stack sec-b">${body}</div></details>`;
+  if (!secVisible(id)) return '';
+  const k = UI.sesion + ':' + id; const lleno = secLleno(id);
+  const open = UI.secOpen[k] ?? lleno;
+  const ocultar = prepOcultas().includes(id) ? `<button class="btn sm ghost" data-a="secfija" data-id="${id}" title="Mostrar esta sección en todas las sesiones">Mostrar siempre</button>`
+    : !lleno ? `<button class="btn sm ghost secx" data-a="secoculta" data-id="${id}" title="No mostrar esta sección cuando esté vacía (en todas las sesiones)">Ocultar</button>` : '';
+  return `<details class="panel sec" data-sec="${id}" ${open ? 'open' : ''}><summary><span class="sec-t">${title}</span><span class="row" style="gap:6px">${extra}${ocultar}</span></summary><div class="stack sec-b">${body}</div></details>`;
+}
+function secAnadir() {
+  const ocu = SECS_PREP.filter(([id]) => !secVisible(id)); if (!ocu.length) return '';
+  return `<div class="row small secadd"><span class="muted">＋ Añadir sección:</span>${ocu.map(([id, t]) => `<button class="btn sm ghost" data-a="secver" data-id="${id}">${t}</button>`).join('')}</div>`;
 }
 function botonFuentes(sec, label) {
   const open = UI.fuentes[UI.sesion + ':' + sec];
@@ -247,7 +280,7 @@ function botonFuentes(sec, label) {
 function archivosEditor(key, list, addLabel) {
   const p = plan(key);
   return `<div class="stack" style="gap:6px">${(p[list] || []).map(it => it.assetId
-    ? `<div class="row"><span class="tag">${it.tipo === 'application/pdf' ? 'PDF' : (it.tipo || '').startsWith('image') ? 'Imagen' : (it.tipo || '').startsWith('video') ? 'Vídeo' : 'Archivo'}</span><a href="${esc(linkItem(it))}" target="_blank" rel="noopener" class="grow" style="overflow-wrap:anywhere">${esc(it.t)}</a><button class="iconbtn" data-a="delitem" data-list="${list}" data-id="${it.id}" aria-label="Quitar">✕</button></div>`
+    ? `<div class="row"><span class="tag">${it.tipo === 'application/pdf' ? 'PDF' : (it.tipo || '').startsWith('image') ? 'Imagen' : (it.tipo || '').startsWith('video') ? 'Vídeo' : 'Archivo'}</span><a href="${esc(linkItem(it))}" target="_blank" rel="noopener" class="grow" style="overflow-wrap:anywhere">${esc(it.t)}</a>${it.tipo === 'application/pdf' ? botonAnotar(it.assetId, it.t) : ''}<button class="iconbtn" data-a="delitem" data-list="${list}" data-id="${it.id}" aria-label="Quitar">✕</button></div>`
     : `<div class="row"><input type="text" placeholder="Nombre" value="${esc(it.t ?? '')}" data-f="plist" data-list="${list}" data-id="${it.id}" data-k="t" style="flex:1;min-width:140px"><input type="url" placeholder="https://…" value="${esc(it.url ?? '')}" data-f="plist" data-list="${list}" data-id="${it.id}" data-k="url" style="flex:1;min-width:140px">${it.url ? `<a class="iconbtn" href="${esc(it.url)}" target="_blank" rel="noopener" aria-label="Abrir">↗</a>` : ''}<button class="iconbtn" data-a="delitem" data-list="${list}" data-id="${it.id}" aria-label="Quitar">✕</button></div>`).join('')}
     <div class="row">${ARCH.assets ? `<button class="btn sm ghost" data-a="subir" data-list="${list}">+ Subir archivo</button>` : ''}<button class="btn sm ghost" data-a="additem" data-list="${list}">+ ${addLabel}</button></div></div>`;
 }
@@ -278,7 +311,7 @@ function sugTips(sg) {
 function tabDesarrollo(key, g, f) {
   const p = S.planes[key] || {}; const sg = p.sug || {}; const { consejosHTML, motivarHTML } = sugTips(sg);
   const fij = sec => fijadasHTML(key, sec); const txt = t => (t || '').trim() ? `<div class="p-body" style="white-space:pre-wrap">${esc(t)}</div>` : '';
-  const enl = L => (L || []).filter(it => it.assetId || (it.url || '').trim() || (it.t || '').trim()).map(it => `<div class="row" style="gap:6px">${it.assetId ? `<span class="tag">${it.tipo === 'application/pdf' ? 'PDF' : (it.tipo || '').startsWith('image') ? 'Imagen' : (it.tipo || '').startsWith('video') ? 'Vídeo' : 'Archivo'}</span>` : '<span aria-hidden="true">🔗</span>'}${it.assetId || it.url ? `<a href="${esc(it.assetId ? linkItem(it) : it.url)}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">${esc(it.t || it.url)}</a>` : esc(it.t)}</div>`).join('');
+  const enl = L => (L || []).filter(it => it.assetId || (it.url || '').trim() || (it.t || '').trim()).map(it => `<div class="row" style="gap:6px">${it.assetId ? `<span class="tag">${it.tipo === 'application/pdf' ? 'PDF' : (it.tipo || '').startsWith('image') ? 'Imagen' : (it.tipo || '').startsWith('video') ? 'Vídeo' : 'Archivo'}</span>` : '<span aria-hidden="true">🔗</span>'}${it.assetId || it.url ? `<a href="${esc(it.assetId ? linkItem(it) : it.url)}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">${esc(it.t || it.url)}</a>` : esc(it.t)}${it.assetId && it.tipo === 'application/pdf' ? botonAnotar(it.assetId, it.t) : ''}</div>`).join('');
   const dur = tmin(f.fin) - tmin(f.inicio); const bl = (p.bloques || []).filter(b => (b.fase || '').trim() || Number(b.min));
   let acum = 0;
   const S_ = [];
@@ -286,11 +319,11 @@ function tabDesarrollo(key, g, f) {
   if (bl.length) { const tot = bl.reduce((s0, b) => s0 + (Number(b.min) || 0), 0) || 1;
     S_.push(['Guion', `<div class="devbar" aria-hidden="true">${bl.map((b, i) => `<span style="width:${(Number(b.min) || 0) / Math.max(tot, dur || 0) * 100}%;background:${COLF[i % COLF.length]}"></span>`).join('')}</div><div class="stack" style="gap:0">${bl.map((b, i) => { const ini = acum; acum += Number(b.min) || 0; return `<div class="row" style="flex-wrap:nowrap;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid var(--surface-2)"><span class="hand" style="font-size:1.45rem;width:52px;color:${COLF[i % COLF.length]}">${tHM(tmin(f.inicio) + ini)}</span><span class="grow">${esc(b.fase || '')}</span><span class="mono tiny muted">${Number(b.min) ? b.min + '′' : ''}</span></div>`; }).join('')}</div>`, `${acum} / ${dur} min`]); }
   const ex = fij('explicacion') + txt(p.explicacion) + enl(p.enlaces); if (ex) S_.push(['Explicación', ex]);
-  const co = fij('consejos') + txt(p.consejosNotas) + consejosHTML; if (co) S_.push(['Consejos para explicarlo', co]);
-  const mo = fij('motivar') + txt(p.motivarNotas) + motivarHTML; if (mo) S_.push(['Motivar', mo]);
+  const co = fij('consejos') + txt(p.consejosNotas) + consejosHTML; const mo = fij('motivar') + txt(p.motivarNotas) + motivarHTML;
+  if (co || mo) S_.push(['Cómo contarlo', (mo ? `<div class="engancha"><div class="label">Para enganchar</div><div class="stack" style="gap:8px">${mo}</div></div>` : '') + co]);
   const acts = (p.actividades || []).filter(a => (a.texto || '').trim() || a.archivo || a.creada);
   const ac = fij('actividades') + (acts.length ? `<ol class="devacts">${acts.map(a => `<li><div><b>${esc(a.texto || (a.creada ? 'Actividad' : ''))}</b>${a.tipo ? ` <span class="tag">${esc(a.tipo)}</span>` : ''}</div>
-      ${a.archivo ? `<div class="small"><a href="_blob/${esc(a.archivo.assetId)}" target="_blank" rel="noopener">📎 ${esc(a.archivo.nombre)}</a></div>` : ''}
+      ${a.archivo ? `<div class="small row" style="gap:6px"><a href="_blob/${esc(a.archivo.assetId)}" target="_blank" rel="noopener">📎 ${esc(a.archivo.nombre)}</a>${a.archivo.tipo === 'application/pdf' ? botonAnotar(a.archivo.assetId, a.archivo.nombre) : ''}</div>` : ''}
       ${a.creada ? `<div class="row small" style="margin-top:4px"><button class="btn sm ghost" data-a="veract" data-id="${a.id}">📄 Ver ficha</button><button class="btn sm ghost" data-a="proyact" data-id="${a.id}">Proyectar</button></div>` : ''}
       ${a.solucion ? `<div class="sugbox" style="margin-top:6px"><div class="label">Solucionario</div><div class="small" style="white-space:pre-wrap">${esc(a.solucion)}</div></div>` : ''}</li>`).join('')}</ol>` : '');
   if (ac) S_.push(['Actividades', ac]);
@@ -325,9 +358,8 @@ function tabPreparar(key, g, f) {
       ${sEsquema}
       <div class="label">Archivos y enlaces</div>${archivosEditor(key, 'enlaces', 'Añadir enlace')}`)}
 
-    ${sec('consejos', 'Consejos para explicarlo', `${fijadasHTML(key, 'consejos')}${fuentesBox(key, 'consejos')}<textarea data-f="plan" data-k="consejosNotas" rows="2" placeholder="Tus notas para explicarlo (analogías, errores que vigilar, preguntas…)" aria-label="Tus notas para explicarlo">${esc(p.consejosNotas || '')}</textarea>${consejosHTML || '<p class="empty">Pulsa «Ideas» para ver analogías, ejemplos, errores frecuentes, lo que más cuesta, preguntas de comprobación y vocabulario del banco y de tus ideas.</p>'}`, botonFuentes('consejos', 'Ideas'))}
-
-    ${sec('motivar', 'Motivar', `${fijadasHTML(key, 'motivar')}${fuentesBox(key, 'motivar')}<textarea data-f="plan" data-k="motivarNotas" rows="3" aria-label="Tus ideas para motivar">${esc(p.motivarNotas || '')}</textarea>${motivarHTML}`, botonFuentes('motivar', 'Ideas'))}
+    ${sec('contar', 'Cómo contarlo', `<div class="label">Para enganchar</div>${fijadasHTML(key, 'motivar')}${fuentesBox(key, 'motivar')}<textarea data-f="plan" data-k="motivarNotas" rows="2" placeholder="Una pregunta, un dato curioso o una noticia para empezar…" aria-label="Para enganchar">${esc(p.motivarNotas || '')}</textarea>${motivarHTML}
+      <div class="label" style="margin-top:6px">Para explicarlo</div>${fijadasHTML(key, 'consejos')}${fuentesBox(key, 'consejos')}<textarea data-f="plan" data-k="consejosNotas" rows="2" placeholder="Analogías, errores que vigilar, preguntas de comprobación…" aria-label="Para explicarlo">${esc(p.consejosNotas || '')}</textarea>${consejosHTML || '<p class="empty">Pulsa «Ideas» para ver ganchos, analogías, ejemplos, errores frecuentes, lo que más cuesta, preguntas de comprobación y vocabulario del banco y de tus ideas.</p>'}`, botonFuentes('motivar', 'Enganchar') + botonFuentes('consejos', 'Explicar'))}
 
     ${sec('actividades', 'Actividades', `${fijadasHTML(key, 'actividades')}${fuentesBox(key, 'actividades')}${actividadesEditor(key)}
       ${sActs}`, botonFuentes('actividades', 'Ideas'))}
@@ -341,6 +373,7 @@ function tabPreparar(key, g, f) {
         <button class="iconbtn" data-a="delev" data-id="${ev.id}" aria-label="Quitar">✕</button></div>`).join('')}
       <div class="row"><button class="btn sm ghost" data-a="addev" data-t="examen">+ Examen en esta sesión</button><button class="btn sm ghost" data-a="addev" data-t="entrega">+ Mandar una entrega</button></div>`)}
 
+    ${secAnadir()}
   </div><div class="stack">
     <div class="panel"><h3>💡 Tus ideas para este tema</h3>
       ${ideas.length ? `<div class="stack" style="gap:8px">${ideas.slice(0, 5).map(i => `<div class="card idea" style="padding:10px"><div class="row between"><span class="tag">${esc(i.tipo || 'Idea')}</span>${p.ideasUsadas?.includes(i.id) ? pill('ok', 'Fijada') : ''}</div><b>${esc(i.titulo || '')}</b>${i.texto ? `<div class="txt small">${esc(i.texto.slice(0, 220))}${i.texto.length > 220 ? '…' : ''}</div>` : ''}${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener" class="small">Abrir enlace</a>` : ''}
@@ -421,12 +454,12 @@ function fuentesBox(key, sec) {
 }
 
 /* ---------- ideas fijadas en la sesión ---------- */
-const APT_FIJAR = [['explicacion', 'Explicación'], ['consejos', 'Consejos para explicarlo'], ['motivar', 'Motivar'], ['actividades', 'Actividades'], ['recursos', 'Recursos']];
+const APT_FIJAR = [['explicacion', 'Explicación'], ['motivar', 'Cómo contarlo · enganchar'], ['consejos', 'Cómo contarlo · explicar'], ['actividades', 'Actividades'], ['recursos', 'Recursos']];
 const APT_FIJAR_N = Object.fromEntries(APT_FIJAR);
 function fijarIdea(key, i, apt, enModal) {
   const p = plan(key); p.ideasFijadas = (p.ideasFijadas || []).filter(f => f.id !== i.id); p.ideasFijadas.push({ id: i.id, apt });
   if (!(p.ideasUsadas || []).includes(i.id)) { p.ideasUsadas = [...(p.ideasUsadas || []), i.id]; i.usos = [...(i.usos || []), key]; touch('ideas'); }
-  UI.secOpen[key + ':' + apt] = true; touchPlan(key); toast('Idea fijada en ' + APT_FIJAR_N[apt]);
+  UI.secOpen[key + ':' + secDe(apt)] = true; touchPlan(key); toast('Idea fijada en ' + APT_FIJAR_N[apt]);
   if (!enModal) { UI.keepScroll = true; render(); } else if (UI.view === 'sesion' && UI.sesion === key) { UI.keepScroll = true; render(); }
 }
 function desfijarIdea(key, id, enModal) {
@@ -453,7 +486,7 @@ function biModal(anim) {
   const html = `<div class="row between"><h2 style="margin:0">Banco de ideas</h2><button class="iconbtn" data-a="close" aria-label="Cerrar">✕</button></div>
     <p class="small muted" style="margin:4px 0 10px">${g ? gchip(g) + ' · ' : ''}${cap(fLong(fecha))}${f ? ' · ' + esc(f.inicio) : ''}${p.titulo ? ' · ' + esc(p.titulo) : ''}. Elige el apartado y pulsa <b>Fijar</b>: la idea quedará fijada en ese apartado de la sesión.</p>
     <div class="row" style="margin-bottom:8px"><input type="search" id="bi-q" placeholder="Buscar en tus ideas" value="${esc(B0.q || '')}" data-f="biq" style="flex:1;min-width:180px">
-      <div class="seg">${[['', 'Todas'], ...APARTADOS].map(([k, t]) => `<button data-a="biapt" data-v="${k}" aria-pressed="${(B0.apt || '') === k}">${k ? t.replace('Consejos para la explicación', 'Consejos') : t}</button>`).join('')}</div></div>
+      <div class="seg">${[['', 'Todas'], ...APARTADOS].map(([k, t]) => `<button data-a="biapt" data-v="${k}" aria-pressed="${(B0.apt || '') === k}">${k ? t.replace('Cómo contarlo · ', '') : t}</button>`).join('')}</div></div>
     <div>${lista}</div>
     <div class="row between" style="margin-top:12px"><button class="btn sm ghost" data-a="biir">Apuntar una idea nueva</button><button class="btn primary" data-a="close">Listo</button></div>`;
   if (anim) modal(html, false, 'wide'); else remodal(html, 'wide');

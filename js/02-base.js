@@ -56,7 +56,7 @@ const ACT_OLD = { si: 5, medias: 3, no: 1 };
 const actVal = v => v == null ? null : typeof v === 'string' ? { n: ACT_OLD[v] || null, tags: [] } : v;
 const OTROS = { guardia: 'Guardia', ac: 'AC · Complementaria', at: 'AT · Atención a familias', ae: 'Atención educativa', reunion: 'Reunión' };
 const OTROS_C = { guardia: 'Guardia', ac: 'AC', at: 'AT', ae: 'Atención educativa', reunion: 'Reunión' };
-const TIPOS_AG = { tarea:'Tarea', examen:'Examen', entrega:'Entrega', reunion:'Reunión', otro:'Otro' };
+const TIPOS_AG = { tarea:'Tarea', clase:'Para clase', examen:'Examen', entrega:'Entrega', reunion:'Reunión', otro:'Otro' };
 const TIPOS_IDEA = ['Actividad','Recurso','Anécdota','Dato curioso','Noticia','Pregunta','Experimento','Analogía','Error conceptual','Situación de aprendizaje','Salida','Otro'];
 const ASIGNATURAS = [
   ['byg1eso', 'Biología y Geología · 1.º ESO', 'eso1', '1eso', '1.º ESO'],
@@ -72,8 +72,10 @@ const ASIGNATURAS = [
 const ASIG = Object.fromEntries(ASIGNATURAS.map(([k, nombre, curr, banco, nivel]) => [k, { nombre, curr, banco, nivel }]));
 const esTutoria = g => g?.asig === 'tutoria';
 const asigSelect = (val, attrs) => `<select ${attrs}><option value="">Elige la asignatura…</option>${ASIGNATURAS.map(([k, n]) => `<option value="${k}" ${val === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
-const APARTADOS = [['consejos', 'Consejos para la explicación'], ['motivar', 'Motivación'], ['actividades', 'Actividades'], ['recursos', 'Recursos']];
+const APARTADOS = [['motivar', 'Cómo contarlo · enganchar'], ['consejos', 'Cómo contarlo · explicar'], ['actividades', 'Actividades'], ['recursos', 'Recursos']];
 const APT = Object.fromEntries(APARTADOS);
+/* sección de Preparar donde va cada apartado (consejos y motivar van juntos en «Cómo contarlo») */
+const secDe = apt => (apt === 'consejos' || apt === 'motivar') ? 'contar' : apt;
 /* apartado de la sesión al que va una idea; las ideas antiguas sin apartado se deducen por su tipo */
 function apartadoIdea(i) {
   if (i.apartado && APT[i.apartado]) return i.apartado; const t = i.tipo;
@@ -124,7 +126,7 @@ const numPre = a => a.num ? `<span class="muted">${a.num}.</span> ` : '';
 const ordenarAlumnos = g => g.alumnos.sort((x, y) => ((x.num || Infinity) - (y.num || Infinity) || 0) || (x.apellidos || '').localeCompare(y.apellidos || '', 'es', { sensitivity: 'base' }) || (x.pila || '').localeCompare(y.pila || '', 'es', { sensitivity: 'base' }));
 function normMat(d) { const m = d && Array.isArray(d.asigs) ? d : { asigs: [] }; m.asigs.forEach(a => { a.carpetas = a.carpetas || []; a.archivos = a.archivos || []; }); return m; }
 function hydrate(docs) {
-  S = { config: Object.assign(DEFAULT_CONFIG(), docs.config || {}), grupos: docs.grupos?.list || [], agenda: docs.agenda?.list || [], ideas: docs.ideas?.list || [], pendientes: docs.pendientes?.list || [], pendgrupo: docs.pendgrupo?.map || {}, planes: {}, regs: {}, cal: {}, materiales: normMat(docs.materiales), libros: {}, plantillas: docs.plantillas?.list || [] };
+  S = { config: Object.assign(DEFAULT_CONFIG(), docs.config || {}), grupos: docs.grupos?.list || [], agenda: docs.agenda?.list || [], ideas: docs.ideas?.list || [], pendientes: docs.pendientes?.list || [], pendgrupo: docs.pendgrupo?.map || {}, planes: {}, regs: {}, cal: {}, materiales: normMat(docs.materiales), libros: {}, anot: {}, plantillas: docs.plantillas?.list || [] };
   S.config.pesos = Object.assign(DEFAULT_CONFIG().pesos, S.config.pesos || {});
   S.grupos.forEach(g => { g.alumnos.forEach(normAlumno); ordenarAlumnos(g); });
   Object.keys(docs).forEach(id => {
@@ -132,6 +134,7 @@ function hydrate(docs) {
     if (id.startsWith('reg_')) Object.assign(S.regs, docs[id].map || {});
     if (id.startsWith('cal_') && docs[id] && docs[id].arbol) S.cal[id.slice(4)] = docs[id];
     if (id.startsWith('libro_') && docs[id] && docs[id].id) S.libros[docs[id].id] = docs[id];
+    if (id.startsWith('anot_') && docs[id] && docs[id].pages) S.anot[id.slice(5)] = docs[id];
   });
   dhIniciar();
 }
@@ -143,6 +146,7 @@ function docData(id) {
   if (id === 'plantillas') return { list: S.plantillas || [] };
   if (id.startsWith('libro_')) return S.libros[id.slice(6)] || {};
   if (id.startsWith('cal_')) return S.cal[id.slice(4)] || {};
+  if (id.startsWith('anot_')) return (S.anot || {})[id.slice(5)] || {};
   const [kind, wk] = [id.slice(0, id.indexOf('_')), id.slice(id.indexOf('_') + 1)];
   const src = kind === 'plan' ? S.planes : S.regs, map = {};
   Object.keys(src).forEach(k => { if (mondayOf(k.split('|')[1]) === wk) map[k] = src[k]; });
@@ -180,6 +184,7 @@ function allDocIds() {
   Object.keys(S.regs).forEach(k => ids.add('reg_' + mondayOf(k.split('|')[1])));
   Object.keys(S.cal || {}).forEach(g => ids.add('cal_' + g));
   Object.keys(S.libros || {}).forEach(b => ids.add('libro_' + b));
+  Object.keys(S.anot || {}).forEach(a => ids.add('anot_' + a));
   return [...ids];
 }
 
@@ -203,7 +208,7 @@ function dhVacio(id) {
   if (id === 'config') return JSON.stringify(DEFAULT_CONFIG());
   if (id === 'materiales') return JSON.stringify({ asigs: [] });
   if (/^(plan|reg)_/.test(id) || id === 'pendgrupo') return '{"map":{}}';
-  if (/^(cal|libro)_/.test(id)) return '{}';
+  if (/^(cal|libro|anot)_/.test(id)) return '{}';
   return '{"list":[]}';
 }
 function dhIniciar() {
@@ -230,7 +235,7 @@ function dhCerrar() {
   const arch = Deshacer.archPend.splice(0);
   if (Deshacer.restaurando) { Deshacer.restaurando = false; arch.forEach(dhArchivoProgramar); return; }
   const ac = Deshacer.accion;
-  if (!antes.size || !ac || DH_NO.has(ac.a)) { arch.forEach(dhArchivoProgramar); return; }
+  if (!antes.size || !ac || DH_NO.has(ac.a) || ac.a.startsWith('pdf')) { arch.forEach(dhArchivoProgramar); return; }
   const ult = Deshacer.pila[Deshacer.pila.length - 1];
   if (ult && ult.t === ac.t) { antes.forEach((v, id) => { if (!ult.antes.has(id)) ult.antes.set(id, v); }); ult.archivos.push(...arch); }
   else {
@@ -440,14 +445,49 @@ function recordatoriosDe(s) {
     return offs.includes(n) ? { a, n } : null;
   }).filter(Boolean).sort((x, y) => x.n - y.n);
 }
-const pendGrupo = gid => (S.pendgrupo[gid] || []);
+/* Hoy › Tareas: vencidas, de ese día, sin fecha de los grupos con clase y las que piden aviso antes («avisarme») */
+function tareasDia(s, grIds) {
+  const ya = new Set(), out = [];
+  const add = (a, cuando, c, orden) => { if (ya.has(a.id)) return; ya.add(a.id); out.push({ a, cuando, c, orden }); };
+  S.agenda.filter(a => !a.done && a.fecha && a.fecha < s).forEach(a => add(a, a.tipo === 'clase' ? 'desde ' + fShort(a.fecha) : 'vencida ' + rel(diffDays(s, a.fecha)), a.tipo === 'clase' ? '' : 'tx-warn', 0));
+  S.agenda.filter(a => !a.done && a.fecha === s).forEach(a => add(a, '', '', 1));
+  S.agenda.filter(a => !a.done && !a.fecha && a.grupoId && (grIds || []).includes(a.grupoId) && TIPOS_TAREA.has(a.tipo)).forEach(a => add(a, 'sin fecha', '', 2));
+  recordatoriosDe(s).filter(r => r.n > 0).forEach(({ a, n }) => add(a, rel(n), '', 3));
+  return out.sort((x, y) => x.orden - y.orden || (x.a.fecha || '').localeCompare(y.a.fecha || '') || (x.a.hora || '').localeCompare(y.a.hora || ''));
+}
+/* tareas de un grupo para una sesión: lo apuntado para ese grupo (tareas y «para clase») con fecha hasta ese día o sin fecha.
+   Lo que no se marca sigue apareciendo en las sesiones siguientes. «key» deja ver también lo marcado en esa misma sesión. */
+const TIPOS_TAREA = new Set(['tarea', 'clase']);
+function tareasGrupo(gid, fecha, key) {
+  return S.agenda.filter(a => a.grupoId === gid && TIPOS_TAREA.has(a.tipo) && (!a.done || (key && a.doneEn === key)) && (!a.fecha || !fecha || a.fecha <= fecha))
+    .sort((a, b) => (a.fecha || '9').localeCompare(b.fecha || '9'));
+}
+/* fecha de la siguiente clase del grupo después de «fecha» ('' si no hay en los próximos 60 días) */
+function siguienteClase(gid, fecha) { return ocurrencias(gid, addDays(fecha, 1), addDays(fecha, 60))[0]?.fecha || ''; }
+function nuevaTareaClase(gid, t, fecha, extra) {
+  const a = Object.assign({ id: uid(), titulo: t, tipo: 'clase', grupoId: gid, fecha: fecha || '', hora: '', notas: '', done: false, comunicado: false, recordar: { mismo: true } }, extra || {});
+  S.agenda.push(a); return a;
+}
+/* los antiguos «Pendientes de clase» (documento pendgrupo) pasan a ser tareas «Para clase» de la agenda */
+function migrarPendientes() {
+  const m = S.pendgrupo || {}; let n = 0;
+  Object.entries(m).forEach(([gid, L]) => (L || []).forEach(p => {
+    if (!grupo(gid) || S.agenda.some(a => a.id === p.id)) return;
+    const base = p.creado || todayStr();
+    nuevaTareaClase(gid, p.t || '', p.done ? base : (siguienteClase(gid, addDays(base, -1)) || base), { id: p.id, done: !!p.done, doneEn: p.doneEn || null, origen: p.origen || null, creado: p.creado || null, ejemplo: p.ejemplo || undefined });
+    n++;
+  }));
+  if (Object.keys(m).length) { S.pendgrupo = {}; touch('agenda', 'pendgrupo'); }
+  return n;
+}
 
 /* seguimiento por alumno (sin motor de calificaciones: solo registros) */
-function seguimiento(gid) {
+function seguimiento(gid, desde, hasta) {
   const g = grupo(gid); const P = S.config.pesos; const out = {};
   g.alumnos.forEach(a => out[a.id] = { F: 0, J: 0, R: 0, deb: [], tra: [], act: [], actTags: {}, preg: [], bano: 0, notas: 0, sesiones: 0 });
   Object.keys(S.regs).forEach(k => {
     if (!k.startsWith(gid + '|')) return; const r = S.regs[k];
+    if (desde || hasta) { const f = parseKey(k).fecha; if ((desde && f < desde) || (hasta && f > hasta)) return; }
     g.alumnos.forEach(a => {
       const o = out[a.id]; const as = r.asis?.[a.id];
       if (r.asis && Object.keys(r.asis).length || r.deberes || r.trabajo) o.sesiones++;
@@ -477,8 +517,6 @@ function alertas(s) {
   if (sinPlan.length) out.push({ c: 'bad', t: `<b>${sinPlan.length} ${sinPlan.length === 1 ? 'sesión' : 'sesiones'} sin planificar</b> para ${diffDays(s, man) === 1 ? 'mañana' : fLong(man)}: ${sinPlan.map(x => esc(x.grupo.nombre)).join(', ')}.`, key: sinPlan[0].key });
   const hoySin = sesionesDia(s).filter(x => estadoPlan(x.key).c === 'bad');
   if (hoySin.length) out.push({ c: 'bad', t: `<b>Hoy</b> tienes ${hoySin.length} ${hoySin.length === 1 ? 'sesión' : 'sesiones'} sin planificar.`, key: hoySin[0].key });
-  const venc = S.agenda.filter(a => !a.done && a.fecha && a.fecha < s);
-  if (venc.length) out.push({ c: 'warn', t: `<b>${venc.length} ${venc.length === 1 ? 'tarea vencida' : 'tareas vencidas'}</b> en la agenda.`, go: 'agenda' });
   S.agenda.filter(a => !a.done && a.tipo === 'examen' && a.grupoId && !a.comunicado && a.fecha >= s && diffDays(s, a.fecha) <= (S.config.avisos.examenDias || 7))
     .forEach(a => out.push({ c: 'warn', t: `<b>Examen sin comunicar</b>: ${esc(a.titulo)} (${esc(grupo(a.grupoId)?.nombre || '')}), ${rel(diffDays(s, a.fecha))}.`, go: 'agenda' }));
   S.grupos.forEach(g => {
