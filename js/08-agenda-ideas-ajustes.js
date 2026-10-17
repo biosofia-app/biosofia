@@ -120,6 +120,23 @@ VIEWS.ajustes = () => {
     <div class="row"><button class="btn" data-a="exportar">Exportar copia completa</button><button class="btn" data-a="importar">Importar copia</button>${S.grupos.length ? '' : '<button class="btn" data-a="ejemplo">Cargar datos de ejemplo</button>'}</div>
     ${UI.confirm === 'borrar' ? `<div class="alert bad"><span class="grow">Se borrarán todos tus grupos, sesiones, agenda, ideas y pendientes. Exporta antes una copia si la quieres conservar.</span><button class="btn sm danger" data-a="borrar-ok">Borrar todo</button><button class="btn sm" data-a="cancel">Cancelar</button></div>` : `<button class="btn danger" data-a="confirm" data-c="borrar" style="align-self:flex-start">Borrar todos los datos</button>`}
     ${S.grupos.some(g => g.ejemplo) ? `<button class="btn sm" data-a="quitarejemplo" style="align-self:flex-start">Quitar los datos de ejemplo</button>` : ''}</div>
+  ${panelCurriculos()}
   </div>`;
 };
+/* currículos guardados en el dispositivo (js/11-curriculo.js) */
+function panelCurriculos() {
+  const uso = currEnUso(); const G = currGuardados(); const guard = new Set(G.map(x => x.lg + '/' + x.id));
+  const tam = b => b < 1024 ? b + ' B' : Math.round(b / 1024) + ' KB';
+  const lgTxt = lg => lg === 'va' ? L2('valenciano', 'valencià') : L2('castellano', 'castellà');
+  const filaUso = k => { const [lg, id] = k.split('/'); const st = currEstado(id, lg); const g = G.find(x => x.lg === lg && x.id === id);
+    return `<div class="li"><div class="grow"><b>${esc(paqTitulo(id, appLg()))}</b> <span class="small muted">· ${lgTxt(lg)}</span><div class="tiny ${st === 'error' ? 'warnc' : 'muted'}">${st === 'ok' ? L2('✓ En este dispositivo', '✓ En este dispositiu') + (g ? ' · ' + tam(g.bytes) : L2(' (solo en esta sesión)', ' (només en esta sessió)')) : st === 'error' ? L2('No se ha podido descargar: conéctate a internet', "No s'ha pogut descarregar: connecta't a internet") : L2('Descargando…', 'Descarregant…')} · ${S.grupos.filter(x => currLg(x) === lg && currId(ASIG[x.asig]?.curr || S.cal?.[x.id]?.curr || '') === id).map(x => esc(x.nombre)).join(', ')}</div></div></div>`; };
+  const otros = G.filter(x => !uso.has(x.lg + '/' + x.id));
+  return `<div class="panel stack"><h2>Currículos</h2>
+    <p class="small muted" style="margin:0">Competencias específicas, criterios de evaluación y saberes básicos de los decretos de la Comunitat Valenciana. La app descarga solo los de las asignaturas de tus grupos, en el idioma de cada grupo, y los guarda en este dispositivo: no se suben a tu nube. Cada uno ocupa entre 10 y 60 KB.</p>
+    ${uso.size ? `<div class="label">Los que usan tus grupos</div><div class="list">${[...uso].sort().map(filaUso).join('')}</div>` : '<p class="empty">Ningún grupo tiene todavía asignatura del currículo (Grupos → Datos del grupo).</p>'}
+    ${otros.length ? `<div class="label">Guardados que ya no usa ningún grupo</div><div class="list">${otros.map(x => `<div class="li"><div class="grow">${esc(paqTitulo(x.id, appLg()))} <span class="small muted">· ${lgTxt(x.lg)} · ${tam(x.bytes)}</span></div><button class="btn sm ghost" data-a="currborrar" data-k="${x.lg}/${x.id}">Borrar</button></div>`).join('')}</div>
+      <button class="btn sm" data-a="currlimpiar" style="align-self:flex-start">Borrar los que no se usan</button>` : ''}
+    ${uso.size ? `<button class="btn sm ghost" data-a="currrenovar" style="align-self:flex-start">Volver a descargarlos</button>` : ''}
+    ${[...uso].some(k => !guard.has(k) && CURR_MEM[k]) ? '<p class="tiny warnc" style="margin:0">Este navegador no deja guardar más datos: los currículos se descargarán cada vez que abras la app.</p>' : ''}</div>`;
+}
 

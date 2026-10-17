@@ -27,7 +27,7 @@ function importarInstrumentos(gDest, src, ids, opt) {
   const cal = calDe(gDest); const H = hojas(cal); const E = evals(); const mapa = {}; let sinCrit = 0, sinCat = 0;
   const lista = src.lista.filter(i => ids.includes(i.id));
   lista.forEach(i => { mapa[i.id] = uid(); });
-  const critOk = c => !!critTexto(cal, c);
+  const C0 = currOf(cal, gDest); const critOk = c => C0?.cargando ? /^\d+\.\d+$/.test(String(c)) : !!critTexto(cal, c);
   lista.forEach(i => {
     const nodo = nodoDestino(H, i._path, null); if (!nodo) sinCat++;
     const ev = opt.ev === 'mismo' ? (E[i._evIdx]?.id || E[E.length - 1].id) : opt.ev;
@@ -50,7 +50,7 @@ function impModal() {
   const yaHay = new Set((cal.instr || []).map(i => words(i.nombre)));
   if (src && !D.sel) D.sel = src.lista.filter(i => !yaHay.has(words(i.nombre))).map(i => i.id);
   if (!D.nodoDef || !H.some(h => h.n.id === D.nodoDef)) D.nodoDef = H[0]?.n.id;
-  const mismoCurr = src && (src.curr || '') === (cal.curr || '');
+  const mismoCurr = src && currId(src.curr || '') === currId(cal.curr || '');
   const porEv = {}; (src?.lista || []).forEach(i => { const k = i._evIdx; (porEv[k] = porEv[k] || []).push(i); });
   const sinCoinc = (src?.lista || []).filter(i => D.sel.includes(i.id) && !nodoDestino(H, i._path, null)).length;
   modal(`<h2>Importar instrumentos de evaluación</h2>

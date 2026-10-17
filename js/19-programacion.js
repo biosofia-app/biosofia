@@ -14,7 +14,7 @@ function progDe(g) { S.config.prog = S.config.prog || {}; const k = g.asig || g.
 const progLeer = g => (S.config.prog || {})[g.asig || g.id] || { textos: {}, unidades: {}, medidas: false };
 function critsDeInstr(ins) { const s = new Set(); (ins.crit || []).forEach(x => s.add(typeof x === 'string' ? x : x.c)); (ins.items || []).forEach(it => (it.crit || []).forEach(c => s.add(c))); s.delete(undefined); s.delete(null); return [...s]; }
 function progDatos(g) {
-  const P = progLeer(g); const cal = esTutoria(g) ? null : calDe(g); const C = cal ? currOf(cal) : null;
+  const P = progLeer(g); const cal = esTutoria(g) ? null : calDe(g); const C = cal ? currOf(cal, g) : null;
   const occ = ocurrencias(g.id, ...cursoRango());
   const U = []; const idx = {};
   occ.forEach(o => {
@@ -33,10 +33,12 @@ function progDatos(g) {
     const auto = new Set(); instr.filter(i => i.fecha && i.fecha >= u.ini && i.fecha <= u.fin).forEach(i => critsDeInstr(i).forEach(c => auto.add(c)));
     u.critMan = man; u.critAuto = auto; u.crit = new Set([...man, ...auto]);
     u.saberes = (P.unidades?.[u.nombre]?.saberes ?? '').trim() || [...u.temas].join(', ');
+    u.sab = (P.unidades?.[u.nombre]?.sab || []).slice().sort(cmpCrit);
   });
+  const sabT = sabMapa(C); const sabHojas = []; sabRecorrer(C?.sab, (c, t, p, hoja) => { if (hoja) sabHojas.push(c); });
   const totalClases = occ.length; const semanales = S.config.horario.filter(h => h.grupoId === g.id).length;
   const crits = C ? C.ce.flatMap(([ce, txt, cr]) => cr.map(([c, t]) => ({ ce, ceTxt: txt, c, t }))) : [];
-  return { P, cal, C, U, crits, totalClases, semanales, instr };
+  return { P, cal, C, U, crits, totalClases, semanales, instr, sabT, sabHojas };
 }
 const progAsigNombre = g => ASIG[g.asig]?.nombre || g.materia || g.nombre;
 function progGruposMismaAsig(g) { return S.grupos.filter(x => x.asig && x.asig === g.asig).map(x => x.nombre); }
@@ -74,7 +76,7 @@ function progSecciones(g, D) {
   const P = D.P; const S_ = [];
   S_.push(['Datos generales', [`Materia: ${progAsigNombre(g)}`, `Curso escolar: ${S.config.curso || ''}`, `Grupos: ${progGruposMismaAsig(g).join(', ') || g.nombre}`, `Sesiones semanales: ${D.semanales}`, `Sesiones en el curso (grupo de referencia ${g.nombre}): ${D.totalClases}`].join('\n')]);
   if ((P.textos?.justificacion || '').trim()) S_.push(['Justificación y contextualización', P.textos.justificacion.trim()]);
-  S_.push(['Unidades y temporalización', D.U.length ? D.U.map((u, i) => `## ${i + 1}. ${u.nombre}\nDel ${fShort(u.ini)} al ${fShort(u.fin)} · ${u.n} ${u.n === 1 ? 'sesión' : 'sesiones'}${u.saberes ? `\nSaberes: ${u.saberes}` : ''}${u.crit.size ? `\nCriterios de evaluación: ${[...u.crit].sort(cmpCrit).join(', ')}` : ''}${u.examenes.length ? `\nPruebas: ${u.examenes.join('; ')}` : ''}${u.titulos.length ? `\nSesiones: ${u.titulos.join(' · ')}` : ''}`).join('\n\n') : 'Todavía no hay sesiones planificadas con unidad.'] );
+  S_.push(['Unidades y temporalización', D.U.length ? D.U.map((u, i) => `## ${i + 1}. ${u.nombre}\nDel ${fShort(u.ini)} al ${fShort(u.fin)} · ${u.n} ${u.n === 1 ? 'sesión' : 'sesiones'}${u.sab.length ? `\nSaberes básicos:\n${u.sab.map(c => `- ${c} ${D.sabT[c] || ''}`).join('\n')}` : ''}${u.saberes ? `\n${u.sab.length ? 'Temas' : 'Saberes'}: ${u.saberes}` : ''}${u.crit.size ? `\nCriterios de evaluación: ${[...u.crit].sort(cmpCrit).join(', ')}` : ''}${u.examenes.length ? `\nPruebas: ${u.examenes.join('; ')}` : ''}${u.titulos.length ? `\nSesiones: ${u.titulos.join(' · ')}` : ''}`).join('\n\n') : 'Todavía no hay sesiones planificadas con unidad.'] );
   if (D.crits.length) {
     const lineas = D.crits.map(k => { const us = D.U.map((u, i) => u.crit.has(k.c) ? i + 1 : null).filter(Boolean); return `${k.c} ${k.t}: ${us.length ? (us.length === 1 ? 'unidad ' : 'unidades ') + us.join(', ') : 'SIN TRABAJAR'}`; });
     S_.push(['Competencias específicas, criterios y su relación con las unidades', D.C.ce.map(([ce, txt]) => `## Competencia específica ${ce}\n${txt}\n` + lineas.filter(l => l.startsWith(ce + '.')).join('\n')).join('\n\n')]);
@@ -94,11 +96,11 @@ VIEWS.prog = () => {
   if (!GC.length) return `<div class="panel empty">Necesitas al menos un grupo con asignatura para montar la programación.</div>`;
   const g = GC.find(x => x.id === UI.progG) || GC[0]; UI.progG = g.id; const D = progDatos(g); const P = D.P;
   const secs = progSecciones(g, D);
-  const unidadesEd = D.U.length ? `<div class="list">${D.U.map((u, i) => `<div class="li"><div class="grow"><b>${i + 1}. ${esc(u.nombre)}</b><div class="small muted">${fShort(u.ini)} – ${fShort(u.fin)} · ${u.n} ${u.n === 1 ? 'sesión' : 'sesiones'} · ${u.crit.size} ${u.crit.size === 1 ? 'criterio' : 'criterios'}${u.critAuto.size ? ` (${u.critAuto.size} de tus instrumentos)` : ''}</div></div><button class="btn sm" data-a="progunidad" data-u="${esc(u.nombre)}" ${D.C ? '' : 'disabled title="Elige antes la asignatura del grupo"'}>Criterios y saberes</button></div>`).join('')}</div>`
+  const unidadesEd = D.U.length ? `<div class="list">${D.U.map((u, i) => `<div class="li"><div class="grow"><b>${i + 1}. ${esc(u.nombre)}</b><div class="small muted">${fShort(u.ini)} – ${fShort(u.fin)} · ${u.n} ${u.n === 1 ? 'sesión' : 'sesiones'} · ${u.crit.size} ${u.crit.size === 1 ? 'criterio' : 'criterios'}${u.critAuto.size ? ` (${u.critAuto.size} de tus instrumentos)` : ''}${u.sab.length ? ` · ${u.sab.length} ${u.sab.length === 1 ? 'saber' : 'saberes'}` : ''}</div></div><button class="btn sm" data-a="progunidad" data-u="${esc(u.nombre)}" ${D.C ? '' : 'disabled title="Elige antes la asignatura del grupo"'}>Criterios y saberes</button></div>`).join('')}</div>`
     : `<p class="empty">Escribe la «Unidad» en las sesiones (Preparar) para que aparezcan aquí, en orden de fechas.</p>`;
   const sinTrabajar = D.crits.filter(k => !D.U.some(u => u.crit.has(k.c)));
   const cobertura = D.crits.length && D.U.length ? `<div class="tablewrap"><table class="nt prog-cob"><thead><tr><th class="stick">Criterio</th>${D.U.map((u, i) => `<th title="${esc(u.nombre)}">${i + 1}</th>`).join('')}</tr></thead><tbody>${D.crits.map(k => `<tr class="${D.U.some(u => u.crit.has(k.c)) ? '' : 'prog-sin'}"><td class="stick" title="${esc(k.t)}"><b>${esc(k.c)}</b> <span class="small">${esc(k.t.length > 90 ? k.t.slice(0, 88) + '…' : k.t)}</span></td>${D.U.map(u => `<td class="num">${u.crit.has(k.c) ? (u.critMan.has(k.c) ? '●' : '○') : ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-      <p class="tiny muted">● elegido para la unidad · ○ viene de un instrumento de evaluación con fecha en la unidad.${sinTrabajar.length ? ` <b class="tx-bad">${sinTrabajar.length} sin trabajar</b> (en rojo).` : ''}</p>` : '';
+      <p class="tiny muted">● elegido para la unidad · ○ viene de un instrumento de evaluación con fecha en la unidad.${sinTrabajar.length ? ` <b class="tx-bad">${sinTrabajar.length} sin trabajar</b> (en rojo).` : ''}${D.sabHojas.length ? ` <span>Saberes básicos en alguna unidad:</span> <b>${D.sabHojas.filter(c => D.U.some(u => u.sab.includes(c))).length} / ${D.sabHojas.length}</b>` : ''}</p>` : '';
   const doc = secs.map(([t, x]) => `<section class="prog-sec"><h3>${esc(t)}</h3>${progTxtHTML(x)}</section>`).join('');
   return `<div class="page-head noprint"><div><a href="#" data-a="go" data-v="plan" class="small">‹ Planificación</a><div class="label" style="margin-top:4px">Programación</div><h1>${esc(progAsigNombre(g))}</h1>
       <div class="sub">Se monta con tu planificación, el currículo y Calificaciones del grupo de referencia. Los textos propios se guardan para esta asignatura y valen para otros cursos.</div></div>
@@ -119,9 +121,21 @@ function progUnidadModal(nombre) {
   remodal(`<div class="row between"><h2 style="margin:0">${esc(nombre)}</h2><button class="btn sm ghost" data-a="close">Hecho</button></div>
     <p class="small muted">${fShort(u.ini)} – ${fShort(u.fin)} · ${u.n} sesiones</p>
     <label class="f">Saberes de la unidad<textarea rows="3" data-f="progsab" data-u="${esc(nombre)}" placeholder="${esc([...u.temas].join(', '))}">${esc(pu.saberes || '')}</textarea></label>
-    <p class="tiny muted" style="margin-top:2px">Si lo dejas vacío se usan los temas de las sesiones${u.temas.size ? ': ' + esc([...u.temas].join(', ')) : ''}.</p>
-    <div class="label" style="margin-top:10px">Criterios de evaluación</div>
-    <div class="stack" style="gap:10px">${D.C.ce.map(([ce, txt, cr]) => `<div><div class="small"><b>CE${ce}</b> ${esc(txt)}</div>${cr.map(([c, t]) => `<label class="check small prog-crit"><input type="checkbox" data-f="progcrit" data-u="${esc(nombre)}" data-c="${esc(c)}" ${u.critMan.has(c) ? 'checked' : ''}><span><b>${esc(c)}</b> ${esc(t)}${u.critAuto.has(c) ? ' <span class="tag">en tus instrumentos</span>' : ''}</span></label>`).join('')}</div>`).join('')}</div>`, 'prog-modal');
+    ${D.C?.sab?.length ? '<p class="tiny muted" style="margin:2px 0 0">Temas u otros saberes que quieras añadir a los del currículo.</p>' : ''}<p class="tiny muted" style="margin-top:2px">Si lo dejas vacío se usan los temas de las sesiones${u.temas.size ? ': ' + esc([...u.temas].join(', ')) : ''}.</p>
+    ${progSabHTML(D, u, nombre)}
+    <div class="label" style="margin-top:10px">Criterios de evaluación</div>${currAviso(D.C)}
+    <div class="stack" style="gap:10px">${D.C.ce.map(([ce, txt, cr]) => `<div><div class="small"><b>CE${ce}</b> <span${currLangAttr(D.C)}>${esc(txt)}</span></div>${cr.map(([c, t]) => `<label class="check small prog-crit"><input type="checkbox" data-f="progcrit" data-u="${esc(nombre)}" data-c="${esc(c)}" ${u.critMan.has(c) ? 'checked' : ''}><span><b>${esc(c)}</b> <span${currLangAttr(D.C)}>${esc(t)}</span>${u.critAuto.has(c) ? ' <span class="tag">en tus instrumentos</span>' : ''}</span></label>`).join('')}</div>`).join('')}</div>`, 'prog-modal');
+}
+/* saberes básicos del currículo para marcar en una unidad (los bloques y apartados son títulos; se marcan los puntos) */
+function progSabHTML(D, u, nombre) {
+  if (!D.C?.sab?.length) return '';
+  const sel = new Set(u.sab); const otras = new Map(); D.U.forEach((x, i) => { if (x !== u) x.sab.forEach(c => otras.set(c, [...(otras.get(c) || []), i + 1])); });
+  const out = []; const lgA = currLangAttr(D.C);
+  sabRecorrer(D.C.sab, (c, t, prof, hoja) => {
+    if (!hoja) { out.push(`<div class="${prof ? 'small' : ''}" style="margin:${prof ? '6px 0 2px ' + prof * 12 + 'px' : '10px 0 2px'}"><b>${esc(c)}</b> <span${lgA}${prof ? '' : ' style="font-weight:600"'}>${esc(t)}</span></div>`); return; }
+    out.push(`<label class="check small prog-crit" style="margin-left:${prof * 12}px"><input type="checkbox" data-f="progsabc" data-u="${esc(nombre)}" data-c="${esc(c)}" ${sel.has(c) ? 'checked' : ''}><span><b>${esc(c)}</b> <span${lgA}>${esc(t)}</span>${otras.has(c) ? ` <span class="tag">${L2(otras.get(c).length === 1 ? 'unidad' : 'unidades', otras.get(c).length === 1 ? 'unitat' : 'unitats')} ${otras.get(c).join(', ')}</span>` : ''}</span></label>`);
+  });
+  return `<details class="prog-sab" ${u.sab.length ? 'open' : ''} style="margin-top:10px"><summary class="label" style="cursor:pointer"><span>Saberes básicos del currículo</span>${u.sab.length ? ` <span>(${u.sab.length})</span>` : ''}</summary><div class="stack" style="gap:2px;margin-top:4px">${out.join('')}</div></details>`;
 }
 Object.assign(A, {
   progabrir() { UI.view = 'prog'; UI.progG = UI.progG || UI.grupoId; render(); scrollA(0); },
@@ -141,6 +155,7 @@ Object.assign(Fd, {
   progtxt(el) { const P = progDe(grupo(UI.progG)); P.textos = P.textos || {}; P.textos[el.dataset.k] = el.value; touch('config'); clearTimeout(UI.progT); UI.progT = setTimeout(progRefrescarDoc, 400); },
   progmed(el) { progDe(grupo(UI.progG)).medidas = el.checked; touch('config'); UI.keepScroll = true; render(); },
   progsab(el) { const P = progDe(grupo(UI.progG)); const u = P.unidades[el.dataset.u] = P.unidades[el.dataset.u] || {}; u.saberes = el.value; touch('config'); },
+  progsabc(el) { const P = progDe(grupo(UI.progG)); const u = P.unidades[el.dataset.u] = P.unidades[el.dataset.u] || {}; const s = new Set(u.sab || []); if (el.checked) s.add(el.dataset.c); else s.delete(el.dataset.c); u.sab = [...s].sort(cmpCrit); touch('config'); },
   progcrit(el) { const P = progDe(grupo(UI.progG)); const u = P.unidades[el.dataset.u] = P.unidades[el.dataset.u] || {}; const s = new Set(u.crit || []); if (el.checked) s.add(el.dataset.c); else s.delete(el.dataset.c); u.crit = [...s].sort(cmpCrit); touch('config'); }
 });
 /* al escribir los textos solo se repinta la vista previa (el foco sigue en el campo) */

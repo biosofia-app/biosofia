@@ -20,6 +20,7 @@ function avisoInstalarIOS() {
   if ((S.config.idiomaApp === 'va' || S.config.idiomaApp === 'es') && S.config.idiomaApp !== I18N.lang) I18N.set(S.config.idiomaApp);
   Nube.refrescarEstado();
   render(); avisoInstalarIOS();
+  setTimeout(() => { try { currPrecargar(); } catch (e) {} }, 1500);
   try { escucharCambios(); } catch (e) {}
   setInterval(() => { if (UI.view === 'sesion' && UI.sesTab === 'directo' && !$('#modal').innerHTML && !document.activeElement?.matches('input,textarea')) { UI.keepScroll = true; render(); } }, 60000);
 })();

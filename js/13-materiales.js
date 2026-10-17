@@ -78,7 +78,7 @@ VIEWS.materiales = () => {
 function matNuevaModal() {
   const usadas = new Set(matDe().map(a => a.asig).filter(Boolean));
   modal(`<h2>Nueva asignatura</h2><div class="stack" style="gap:10px">
-    <label class="f">Asignatura<select id="mat-as"><option value="">Otra (escribe el nombre)</option>${ASIGNATURAS.filter(([k]) => k !== 'tutoria').map(([k, n]) => `<option value="${k}" ${usadas.has(k) ? 'disabled' : ''}>${esc(n)}${usadas.has(k) ? ' (ya está)' : ''}</option>`).join('')}</select></label>
+    <label class="f">Asignatura<select id="mat-as" translate="no"><option value="">${esc(I18N.t('Otra (escribe el nombre)'))}</option>${asigOpciones('', { usadas, sinTutoria: true })}</select></label>
     <label class="f">Nombre de la pestaña<input type="text" id="mat-an" placeholder="Si lo dejas vacío, el de la asignatura"></label>
     <label class="check small"><input type="checkbox" id="mat-ac" checked>Crear carpetas iniciales: ${MAT_CARPETAS.join(', ')}</label>
     <div class="row"><button class="btn primary" data-a="matnuevaok">Crear</button><button class="btn" data-a="close">Cancelar</button></div></div>`);

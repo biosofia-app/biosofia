@@ -242,17 +242,17 @@ const A = {
   delpend(el) { S.pendientes = S.pendientes.filter(p => p.id !== el.dataset.id); touch('pendientes'); UI.keepScroll = true; render(); },
   nuevogrupo() { modal(`<h2>Nuevo grupo</h2><div class="stack" style="gap:10px">
     <label class="f">Nombre del grupo<input type="text" id="ng-n" placeholder="3.º ESO B"></label>
-    <label class="f">Asignatura (decide las competencias en Calificaciones y las ideas del banco)${asigSelect('', 'id="ng-a"')}</label>
-    <div class="fgrid"><label class="f">Nombre de la materia<input type="text" id="ng-m" value="Biología y Geología"></label><label class="f">Nivel<input type="text" id="ng-v" placeholder="3.º ESO"></label></div>
+    <label class="f">Asignatura y curso (decide las competencias, criterios y saberes del currículo)${asigSelect('', 'id="ng-a" data-f="ngasig"')}</label>
+    <div class="fgrid"><label class="f">Nombre de la materia<input type="text" id="ng-m" placeholder="Se pone sola al elegir la asignatura"></label><label class="f">Nivel<input type="text" id="ng-v" placeholder="3.º ESO"></label></div>
     <div><div class="label" style="margin-bottom:6px">Idioma de la asignatura</div><div class="row"><label class="check"><input type="radio" name="ng-i" value="es" checked>Castellano</label><label class="check"><input type="radio" name="ng-i" value="va">Valenciano</label></div>
-    <p class="tiny muted" style="margin:4px 0 0">Los materiales para el alumnado se harán en este idioma; el menú va en el idioma de la app (Ajustes).</p></div>
+    <p class="tiny muted" style="margin:4px 0 0">El currículo (competencias, criterios y saberes) y los materiales para el alumnado irán en este idioma; el menú va en el idioma de la app (Ajustes).</p></div>
     <div class="row"><button class="btn primary" data-a="nuevogrupo-ok">Crear grupo</button><button class="btn" data-a="close">Cancelar</button></div></div>`); setTimeout(() => $('#ng-n')?.focus(), 30); },
   'nuevogrupo-ok'() { const n = $('#ng-n').value.trim(); if (!n) { $('#ng-n').focus(); return; }
     const asg = $('#ng-a').value; if (!asg) { toast('Elige la asignatura del grupo'); $('#ng-a').focus(); return; }
-    const g = { id: uid(), nombre: n, materia: asg === 'tutoria' && $('#ng-m').value.trim() === 'Biología y Geología' ? 'Tutoría' : $('#ng-m').value.trim(), nivel: $('#ng-v').value.trim() || ASIG[asg]?.nivel || '', asig: asg, idioma: document.querySelector('input[name="ng-i"]:checked')?.value || 'es', color: (GCOLORS.find(([c]) => !S.grupos.some(x => x.color === c)) || GCOLORS[S.grupos.length % GCOLORS.length])[0], alumnos: [] };
-    S.grupos.push(g); touch('grupos'); closeModal(); UI.view = 'grupo'; UI.grupoId = g.id; UI.grupoTab = 'alumnado'; toast('Grupo creado'); render(); },
+    const g = { id: uid(), nombre: n, materia: $('#ng-m').value.trim() || ASIG[asg]?.materia || '', nivel: $('#ng-v').value.trim() || ASIG[asg]?.nivel || '', asig: asg, idioma: document.querySelector('input[name="ng-i"]:checked')?.value || 'es', color: (GCOLORS.find(([c]) => !S.grupos.some(x => x.color === c)) || GCOLORS[S.grupos.length % GCOLORS.length])[0], alumnos: [] };
+    S.grupos.push(g); touch('grupos'); closeModal(); UI.view = 'grupo'; UI.grupoId = g.id; UI.grupoTab = 'alumnado'; currPrecargar(); toast('Grupo creado'); render(); },
   idiomaapp(el) { const lg = el.dataset.v === 'va' ? 'va' : 'es'; S.config.idiomaApp = lg; touch('config'); UI.keepScroll = true; I18N.set(lg); },
-  gidioma(el) { grupo(UI.grupoId).idioma = el.dataset.v; touch('grupos'); UI.keepScroll = true; render(); },
+  gidioma(el) { grupo(UI.grupoId).idioma = el.dataset.v; touch('grupos'); currPrecargar(); UI.keepScroll = true; render(); },
   alnumerar() { const g = grupo(UI.grupoId); const hay = g.alumnos.some(a => a.num); const go = () => { g.alumnos.forEach((a, i) => { a.num = i + 1; }); touch('grupos'); UI.keepScroll = true; render(); toast('Números de lista puestos'); };
     if (!hay) return go(); modal(`<h2>¿Volver a numerar?</h2><p>Se sustituyen los números de lista actuales por 1–${g.alumnos.length} en el orden en que aparecen ahora.</p><div class="row"><button class="btn primary" data-a="alnumerarok">Numerar</button><button class="btn" data-a="close">Cancelar</button></div>`); UI._numerar = go; },
   alnumerarok() { closeModal(); UI._numerar?.(); UI._numerar = null; },
@@ -302,7 +302,10 @@ const Fd = {
   alobs(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); a.obs = el.value; touch('grupos'); },
   altag(el) { const a = grupo(UI.grupoId).alumnos.find(x => x.id === el.dataset.id); a.tags = a.tags || []; a.tags = el.checked ? [...new Set([...a.tags, el.dataset.t])] : a.tags.filter(t => t !== el.dataset.t); touch('grupos'); },
   gfield(el) { grupo(UI.grupoId)[el.dataset.k] = el.value; touch('grupos'); },
-  gasig(el) { const g = grupo(UI.grupoId); g.asig = el.value; if (!g.nivel && ASIG[g.asig]?.nivel) g.nivel = ASIG[g.asig].nivel; if (S.cal[g.id]) calDe(g); if (g.asig !== 'tutoria' && UI.grupoTab === 'tutoria') UI.grupoTab = 'datos'; touch('grupos'); UI.keepScroll = true; render(); toast(g.asig === 'tutoria' ? 'Tutoría: este grupo no aparece en Calificaciones y tiene la pestaña Tutoría' : 'Asignatura guardada'); },
+  ngasig(el) { const A1 = ASIG[el.value]; if (!A1) return; if (/^val-/.test(el.value)) { const r = document.querySelector('input[name="ng-i"][value="va"]'); if (r) r.checked = true; } const m = $('#ng-m'), v = $('#ng-v'); if (m && (!m.value.trim() || m.dataset.auto)) { m.value = A1.materia || ''; m.dataset.auto = '1'; } if (v && (!v.value.trim() || v.dataset.auto)) { v.value = A1.nivel || ''; v.dataset.auto = '1'; } },
+  gasig(el) { const g = grupo(UI.grupoId); const ant = ASIG[g.asig]; g.asig = el.value; const A1 = ASIG[g.asig];
+    if (A1?.nivel && (!g.nivel || g.nivel === ant?.nivel)) g.nivel = A1.nivel; if (A1?.materia && (!g.materia || g.materia === ant?.materia)) g.materia = A1.materia;
+    if (S.cal[g.id]) calDe(g); currPrecargar(); if (g.asig !== 'tutoria' && UI.grupoTab === 'tutoria') UI.grupoTab = 'datos'; touch('grupos'); UI.keepScroll = true; render(); toast(g.asig === 'tutoria' ? 'Tutoría: este grupo no aparece en Calificaciones y tiene la pestaña Tutoría' : 'Asignatura guardada'); },
   tutal(el) { UI.tutAl = el.value; UI.keepScroll = true; render(); },
   tutf(el) { const g = grupo(UI.grupoId); const t = tutDe(g, UI.tutAl); const k = el.dataset.k; if (k === 'rep') { t.rep = el.value === '1'; touch('grupos'); UI.keepScroll = true; render(); return; } t[k] = el.value; touch('grupos'); },
   tutev(el) { const g = grupo(UI.grupoId); const t = tutDe(g, UI.tutAl); const ev = el.dataset.ev; t.ev[ev] = t.ev[ev] || {}; if (el.value === '') delete t.ev[ev][el.dataset.k]; else t.ev[ev][el.dataset.k] = Number(el.value); touch('grupos'); },

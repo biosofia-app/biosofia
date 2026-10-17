@@ -3,7 +3,7 @@
    - Sirve los archivos subidos (_blob/<id>) desde Drive u OneDrive con el
      token de la página, y los guarda para verlos sin conexión. */
 'use strict';
-const V = 'biosofia-v25';
+const V = 'biosofia-v26';
 const BLOBS = 'biosofia-blobs';
 /* Al añadir, quitar o renombrar un archivo de la app: ponerlo aquí y subir el número de V */
 const JS = ['00-va', '00-idioma', '01-banco-ideas', '02-base', '03-hoy', '04-planificacion', '05-grupos', '06-sesion', '07-tutoria-plano',

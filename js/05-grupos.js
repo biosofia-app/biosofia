@@ -66,10 +66,10 @@ VIEWS.grupo = () => {
   } else {
     body = `<div class="panel stack" style="max-width:560px"><div class="fgrid"><label class="f">Nombre del grupo<input type="text" value="${esc(g.nombre)}" data-f="gfield" data-k="nombre"></label>
       <label class="f">Nombre de la materia<input type="text" value="${esc(g.materia || '')}" data-f="gfield" data-k="materia"></label>
-      <label class="f">Asignatura (competencias e ideas)${asigSelect(g.asig || '', 'data-f="gasig"')}</label>
+      <label class="f">Asignatura y curso (currículo)${asigSelect(g.asig || '', 'data-f="gasig"')}</label>
       <label class="f">Nivel<input type="text" value="${esc(g.nivel || '')}" placeholder="3.º ESO" data-f="gfield" data-k="nivel"></label></div>
       <div><div class="label" style="margin-bottom:6px">Idioma de la asignatura</div><div class="seg">${Object.entries(IDIOMAS).map(([k, t]) => `<button data-a="gidioma" data-v="${k}" aria-pressed="${(g.idioma || 'es') === k}">${t}</button>`).join('')}</div>
-      <p class="tiny muted" style="margin:6px 0 0">El menú va en el idioma de la app (Ajustes). Lo que la app prepare para el alumnado (pantalla de proyección, resumen de la sesión anterior) saldrá en este idioma.</p></div>
+      <p class="tiny muted" style="margin:6px 0 0">El menú va en el idioma de la app (Ajustes). El currículo (competencias, criterios y saberes) y lo que la app prepare para el alumnado (pantalla de proyección, resumen de la sesión anterior) saldrán en este idioma.</p>${grupoCurrInfo(g)}</div>
       <div><div class="label" style="margin-bottom:6px">Color</div><div class="row">${GCOLORS.map(([c, n]) => `<label class="check small"><input type="radio" name="gcolor" data-f="gcolor" value="${c}" ${g.color === c ? 'checked' : ''}><span class="dot" style="background:var(--${c})"></span>${n}${S.grupos.some(x => x.id !== g.id && x.color === c) ? ' <span class="tiny muted">(en uso)</span>' : ''}</label>`).join('')}</div></div>
       <hr>${UI.confirm === 'delgrupo' ? `<div class="alert bad"><span class="grow">Se borrarán el grupo, su horario, sus sesiones planificadas, sus registros y sus calificaciones. Podrás deshacerlo justo después. Si quieres reutilizar la planificación el curso que viene, guárdala antes como plantilla (Planificación › Rápida › 📋 Plantillas).</span><button class="btn sm danger" data-a="delgrupo-ok">Borrar</button><button class="btn sm" data-a="cancel">Cancelar</button></div>` : `<button class="btn danger" data-a="confirm" data-c="delgrupo" style="align-self:flex-start">Borrar grupo</button>`}</div>`;
   }
@@ -100,3 +100,12 @@ function tablaRegistros(g) {
       ${g.alumnos.map(a => `<tr><td class="stick">${esc(a.nombre)}</td>${occ.map(o => celda(o, a)).join('')}</tr>`).join('')}</table></div>` : '<p class="empty">No hubo clases este mes (o aún no han llegado).</p>'}</div>`;
 }
 
+
+/* estado del currículo del grupo (Datos del grupo) */
+function grupoCurrInfo(g) {
+  const id = currId(ASIG[g.asig]?.curr || ''); if (!CURR_PAQ[id]) return '';
+  const lg = currLg(g); const P = currPaq(id, lg); const st = currEstado(id, lg);
+  const ncr = P ? P.ce.reduce((t, c) => t + c[2].length, 0) : 0; const tit = esc(paqTitulo(id, appLg()));
+  return `<p class="tiny ${st === 'error' ? 'warnc' : 'muted'}" style="margin:4px 0 0">${st === 'ok' ? L2(`Currículo de ${tit} (en ${lg === 'va' ? 'valenciano' : 'castellano'}) en este dispositivo: ${P.ce.length} competencias específicas, ${ncr} criterios de evaluación y los saberes básicos.`, `Currículum de ${tit} (en ${lg === 'va' ? 'valencià' : 'castellà'}) en este dispositiu: ${P.ce.length} competències específiques, ${ncr} criteris d'avaluació i els sabers bàsics.`)
+    : st === 'error' ? 'No se ha podido descargar el currículo de esta asignatura. Conéctate a internet y vuelve a esta página.' : 'Descargando el currículo de esta asignatura…'}</p>`;
+}

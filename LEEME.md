@@ -30,6 +30,7 @@ Versión web de BIOSOFÍA: la misma app del artefacto, con inicio de sesión con
 | `manifest.webmanifest`, `icon*` | Instalación como app |
 | `privacidad.html` | Política de privacidad (Google la pide). Pon tu correo de contacto al final |
 | `fonts/` | Letras de la app (IBM Plex y Caveat) |
+| `curr/es.json`, `curr/va.json` | Currículos de todas las asignaturas y cursos, en castellano y en valenciano (ver **Currículos**) |
 | `vendor/` | Librerías incluidas en la app para anotar PDF: PDF.js (Mozilla, licencia Apache 2.0) y pdf-lib (licencia MIT). Solo se cargan al abrir un PDF |
 
 ## Mapa del código
@@ -50,7 +51,7 @@ Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (l
 | `08-agenda-ideas-ajustes.js` | Pantallas **Agenda**, **Ideas** y **Ajustes** | Esas pantallas |
 | `09-modales-acciones.js` | Ventanas, y qué hace cada botón (`data-a`) y cada campo (`data-f`) | Un botón que no responde |
 | `10-copias-ejemplo.js` | Exportar e importar copia, datos de ejemplo | Copias |
-| `11-curriculo.js` | Currículo LOMLOE (CV): competencias y criterios (solo datos) | Criterios que faltan |
+| `11-curriculo.js` | Catálogo de asignaturas y cursos, descarga de los currículos (`curr/`), `ASIG`, `currOf` | Currículo que no carga, asignaturas nuevas |
 | `12-calificaciones.js` | **Calificaciones**: cálculo, reglas, rúbricas, competencias, Excel | Notas |
 | `13-materiales.js` | **Materiales**: carpetas y archivos | Materiales |
 | `14-libro.js` | **Libro digital** y su PDF | Libro |
@@ -82,6 +83,14 @@ Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (l
 - **No se traduce**: lo que escribe el docente en los campos, el contenido del libro (va en el idioma del libro) ni lo que se proyecta o se prepara para el alumnado (va en el idioma del grupo). Esas zonas llevan el atributo `lang`; un botón de la app dentro de ellas lleva `data-tr`.
 - **Un texto nuevo** en el código: añade su traducción en `00-va.js` (si no, se verá en castellano). En la consola, con la app en valenciano, `I18N.pendientes()` lista lo que hay en pantalla sin traducir.
 - Fechas, días y meses salen ya en el idioma de la app (`02-base.js`). Word y Excel usan `I18N.t()`.
+
+## Currículos
+
+- `curr/es.json` y `curr/va.json` llevan, para cada asignatura y curso (`mat-2eso`, `bio-2bach`…), las competencias específicas, los criterios de evaluación y los saberes básicos de los decretos de la Comunitat Valenciana. El valenciano es traducción propia del castellano.
+- La app **no los lleva dentro**: cuando un grupo necesita uno, pide el archivo de su idioma (unos 1,1 MB, una vez por sesión) y guarda en el dispositivo solo los de las asignaturas de los grupos (no en Drive/OneDrive). Ajustes › Currículos muestra cuáles hay y deja borrarlos.
+- El catálogo (qué asignaturas y cursos existen) va en `11-curriculo.js`, entre las marcas `CAT`. Si se cambian los archivos de `curr/`, sube `CURR_VER` en `11-curriculo.js` para que los dispositivos los vuelvan a descargar.
+- Los grupos de versiones anteriores (Biología y Geología) siguen funcionando: sus claves antiguas se traducen solas.
+- Sube la carpeta `curr/` (dos archivos) a GitHub junto con lo demás.
 
 ## Puesta en marcha (unos 30 minutos, una sola vez)
 
@@ -149,7 +158,7 @@ Abre `http://localhost:8000`. Para entrar con Google o Microsoft en local añade
 
 ## Actualizar la app
 
-Sustituye los archivos en GitHub (Upload files), **incluida la carpeta `js/`** y `estilos.css`, pero **no `config.js`**. La app carga la versión nueva la próxima vez que se abra con conexión. Si cambias la lista de archivos de `sw.js`, sube el número de `V` (ahora `biosofia-v24`).
+Sustituye los archivos en GitHub (Upload files), **incluida la carpeta `js/`** y `estilos.css`, pero **no `config.js`**. La app carga la versión nueva la próxima vez que se abra con conexión. Si cambias la lista de archivos de `sw.js`, sube el número de `V` (ahora `biosofia-v26`).
 
 ## Límites conocidos
 

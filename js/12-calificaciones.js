@@ -28,8 +28,8 @@ function migRub(cal) {
   (cal.instr || []).forEach(i => (i.items || []).forEach(it => { if (!it.v2) { const d = it.desc || []; it.desc = ['', d[0] || '', d[1] || '', d[2] || '', d[3] || '']; it.v2 = true; cambio = true; } }));
   return cambio;
 }
-const currOf = cal => cal?.curr === 'custom' ? { nombre: 'Criterios propios', corto: 'elaboración propia', ce: cal.custom?.ce || [] } : CURR[cal?.curr];
-const currAuto = g => { if (ASIG[g.asig]) return ASIG[g.asig].curr || ''; const n = words((g.nivel || '') + ' ' + (g.nombre || '') + ' ' + (g.materia || '')); if (/bach|geologia y ciencias|ciencias ambientales/.test(n)) return 'bach2'; if (/eso/.test(n) && /(^|[^0-9])1/.test(n)) return 'eso1'; if (/eso/.test(n) && /(^|[^0-9])3/.test(n)) return 'eso3'; return ''; };
+/* currOf(cal, g): js/11-curriculo.js */
+const currAuto = g => { if (ASIG[g.asig]) return ASIG[g.asig].curr || ''; const n = words((g.nivel || '') + ' ' + (g.nombre || '') + ' ' + (g.materia || '')); if (/bach|geologia y ciencias|ciencias ambientales/.test(n)) return 'gcca-2bach'; if (/eso/.test(n) && /(^|[^0-9])1/.test(n)) return 'byg-1eso'; if (/eso/.test(n) && /(^|[^0-9])3/.test(n)) return 'byg-3eso'; return ''; };
 const ceDe = code => String(code).split('.')[0];
 function critTexto(cal, code) { const C = currOf(cal); if (!C) return ''; for (const [, , cr] of C.ce) { const x = cr.find(c => c[0] === code); if (x) return x[1]; } return ''; }
 const nodoN = (nombre, peso, extra) => Object.assign({ id: uid(), nombre, peso, pesoEv: {}, hijos: [], modo: 'pond', fuentes: {}, pesoInstr: 100, reparto: 'igual', crit: [] }, extra || {});
@@ -205,7 +205,7 @@ VIEWS.cal = () => {
   const g = GC.find(x => x.id === UI.calG) || GC.find(x => x.id === UI.grupoId) || GC[0]; UI.calG = g.id; const cal = calDe(g);
   const evs = evals(); if (UI.calEv !== 'final' && !evs.some(e => e.id === UI.calEv)) UI.calEv = evActual();
   const tab = UI.calTab || 'cuaderno'; const ev = UI.calEv;
-  const head = `<div class="page-head"><div><div class="label">Calificaciones</div><h1>${gchip(g)}</h1><div class="sub">${esc(g.materia || '')}${g.nivel ? ' · ' + esc(g.nivel) : ''} · ${g.alumnos.length} alumnos · ${cal.curr ? 'criterios de ' + esc(currOf(cal).corto) : 'sin criterios vinculados'}</div></div>
+  const head = `<div class="page-head"><div><div class="label">Calificaciones</div><h1>${gchip(g)}</h1><div class="sub">${esc(g.materia || '')}${g.nivel ? ' · ' + esc(g.nivel) : ''} · ${g.alumnos.length} alumnos · ${cal.curr ? (currOf(cal, g)?.propio ? 'criterios propios' : L2('criterios de ', 'criteris de ') + esc(paqTitulo(currId(cal.curr), appLg()))) : 'sin criterios vinculados'}</div></div>
     <div class="row" style="align-items:flex-end"><label class="f" style="min-width:200px">Grupo<select data-f="calg">${GC.map(x => `<option value="${x.id}" ${x.id === g.id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></label><button class="btn" data-a="calxls">Exportar a Excel</button></div></div>`;
   const tabs = `<div class="tabs" role="tablist">${[['cuaderno', 'Cuaderno'], ['comp', 'Competencias'], ['config', 'Configuración']].map(([v, t]) => `<button role="tab" aria-selected="${tab === v}" data-a="caltab" data-v="${v}">${t}</button>`).join('')}</div>`;
   const evbar = `<div class="row" style="margin-bottom:14px"><div class="seg">${evs.map(e => `<button data-a="calev" data-v="${e.id}" aria-pressed="${ev === e.id}">${esc(e.nombre)}</button>`).join('')}${tab !== 'config' ? `<button data-a="calev" data-v="final" aria-pressed="${ev === 'final'}">Final</button>` : ''}</div>${tab === 'config' ? '<span class="small muted">Editando los pesos de esta evaluación</span>' : ''}</div>`;
@@ -321,7 +321,7 @@ function vistaComp(g, cal, ev) {
   if (!conNota.length) return `<div class="panel empty">Todavía no hay notas en ${ev === 'final' ? 'el curso' : esc(evNombre(ev))}.</div>`;
   if (!ces.length) return `<div class="panel empty">Hay notas, pero ningún instrumento está vinculado a criterios de evaluación. Al crear o editar un instrumento, elige sus criterios (o los de cada ítem de la rúbrica), o pon criterios por defecto a una categoría en Configuración.</div>`;
   const colsCE = ces.map(([n, t, cr]) => { const k = String(n); const crs = cr.filter(c => pesoMedC(c[0]) > 0); return { k, t, crs }; });
-  const h1 = colsCE.map(c => `<th class="cat" colspan="${showC ? c.crs.length + 1 : 1}" title="${esc(c.t)}">CE${c.k} <span class="muted">${nf(pesoMed(c.k) * 100)} %</span><span class="tiny muted" style="display:block;font-weight:400;white-space:normal;max-width:${showC ? 260 : 130}px">${esc(c.t)}</span></th>`).join('');
+  const h1 = colsCE.map(c => `<th class="cat" colspan="${showC ? c.crs.length + 1 : 1}" title="${esc(c.t)}">CE${c.k} <span class="muted">${nf(pesoMed(c.k) * 100)} %</span><span class="tiny muted" style="display:block;font-weight:400;white-space:normal;max-width:${showC ? 260 : 150}px"${currLangAttr(C)}>${esc(cortaTxt(c.t, showC ? 140 : 80))}</span></th>`).join('');
   const h2 = showC ? colsCE.map(c => c.crs.map(([code, txt]) => `<th title="${esc(txt)}">${esc(code)}<span class="tiny muted" style="display:block">${nf(pesoMedC(code) * 100)} %</span></th>`).join('') + `<th class="sum">CE${c.k}</th>`).join('') : '';
   const rows = g.alumnos.map(a => { const x = R[a.id]; const m = Object.values(x.ce).reduce((s, o) => s + o.w * o.g, 0);
     return `<tr><td class="stick"><button class="alname" data-a="calal" data-al="${a.id}">${esc(a.apellidos ? a.apellidos + ', ' + (a.pila || '') : a.nombre)}</button></td>${colsCE.map(c => (showC ? c.crs.map(([code]) => `<td class="${lowC(x.crit[code]?.g).trim()}">${nf(x.crit[code]?.g, 2)}</td>`).join('') : '') + `<td class="sum${lowC(x.ce[c.k]?.g)}">${nf(x.ce[c.k]?.g, 2)}</td>`).join('')}
@@ -413,8 +413,9 @@ function panelCurr(g, cal) {
         <button class="btn sm ghost" data-a="crcadd" data-i="${i}" style="align-self:flex-start;margin-left:12px">+ Criterio</button></div>`).join('') : '<p class="empty">Aún no hay ninguna competencia.</p>'}
       <button class="btn sm" data-a="cecadd" style="align-self:flex-start">+ Competencia específica</button></div>`;
   }
-  if (A0) return `<div class="panel stack"><h3>Currículo</h3><p class="small" style="margin:0">${A0.curr && CURR[A0.curr] ? 'Criterios de <b>' + esc(CURR[A0.curr].nombre) + '</b>' : 'Sin criterios'}</p><p class="tiny muted" style="margin:0">Salen de la asignatura del grupo (Grupos → Datos del grupo). Decreto de la Comunitat Valenciana. Los criterios se eligen al crear cada instrumento o cada ítem de una rúbrica.</p></div>`;
-  return `<div class="panel stack"><h3>Currículo</h3><label class="f">Criterios de evaluación de<select data-f="calcurr"><option value="">Sin currículo (solo nota)</option>${Object.entries(CURR).map(([k, c]) => `<option value="${k}" ${cal.curr === k ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select></label>
+  if (A0) { const C = A0.curr ? currOf(cal, g) : null;
+    return `<div class="panel stack"><h3>Currículo</h3><p class="small" style="margin:0">${C ? L2('Criterios de', 'Criteris de') + ' <b>' + esc(paqTitulo(C.id, appLg())) + '</b> ' + L2(C.lg === 'va' ? '(en valenciano)' : '(en castellano)', C.lg === 'va' ? '(en valencià)' : '(en castellà)') : 'Sin criterios'}</p>${currAviso(C)}<p class="tiny muted" style="margin:0">Salen de la asignatura del grupo y van en su idioma (Grupos → Datos del grupo). Decreto de la Comunitat Valenciana. Los criterios se eligen al crear cada instrumento o cada ítem de una rúbrica.</p></div>`; }
+  return `<div class="panel stack"><h3>Currículo</h3><label class="f">Criterios de evaluación de<select data-f="calcurr" translate="no"><option value="">${esc(I18N.t('Sin currículo (solo nota)'))}</option>${currOpciones(cal.curr)}</select></label>
       <p class="tiny muted" style="margin:0">Mejor: elige la asignatura del grupo en Grupos → Datos del grupo y los criterios se pondrán solos.</p></div>`;
 }
 Object.assign(A, {
@@ -426,9 +427,11 @@ Object.assign(A, {
 /* ---- selector de criterios ---- */
 function pickHTML(cal, sel) {
   const C = currOf(cal); if (!C) return '<p class="empty">Elige primero la asignatura del grupo en Grupos → Datos del grupo.</p>';
+  if (C.cargando) return `<p class="empty">${C.error ? 'No se ha podido descargar el currículo. Conéctate a internet y vuelve a abrir esta ventana.' : 'Descargando el currículo… Vuelve a abrir esta ventana en un momento.'}</p>`;
   if (!C.ce.length) return '<p class="empty">Todavía no has escrito competencias ni criterios. Añádelos en Calificaciones → Configuración.</p>';
-  return `<div class="stack" style="gap:10px">${C.ce.map(([n, t, cr]) => `<div><div class="label" style="margin-bottom:4px">CE${n} · <span style="text-transform:none;letter-spacing:0">${esc(t)}</span></div>
-    ${cr.map(([c, tx]) => `<label class="check small pickrow"><input type="checkbox" data-f="pickchk" data-c="${c}" ${sel.includes(c) ? 'checked' : ''}><b>${c}</b> ${esc(tx)}</label>`).join('')}</div>`).join('')}</div>`;
+  const lgA = currLangAttr(C);
+  return `<div class="stack" style="gap:10px">${C.ce.map(([n, t, cr]) => `<div><div class="label" style="margin-bottom:4px">CE${n} · <span style="text-transform:none;letter-spacing:0"${lgA}>${esc(t)}</span></div>
+    ${cr.map(([c, tx]) => `<label class="check small pickrow"><input type="checkbox" data-f="pickchk" data-c="${c}" ${sel.includes(c) ? 'checked' : ''}><b>${c}</b> <span${lgA}>${esc(tx)}</span></label>`).join('')}</div>`).join('')}</div>`;
 }
 function remodal(html, cls) { const m = document.querySelector('#modal .modal'); const st = m ? m.scrollTop : 0; modal(html, true, cls); const n = document.querySelector('#modal .modal'); if (n) n.scrollTop = st; }
 function pickNodoModal() { const p = UI.pick; const g = grupo(UI.calG); const cal = calDe(g); const n = nodoPorId(cal, p.id); if (!n) return;
@@ -447,7 +450,7 @@ function insModal() {
   const sumIt = d.items.reduce((s, i) => s + (Number(i.peso) || 0), 0); const sumCr = d.crit.reduce((s, x) => s + (Number(x.p) || 0), 0);
   const rubOtros = []; Object.entries(S.cal).forEach(([gid, c]) => (c.instr || []).forEach(i => { if (i.modo === 'rubrica' && (i.items || []).length && i.id !== d.id) rubOtros.push({ id: i.id, gid, t: `${i.nombre} · ${grupo(gid)?.nombre || ''}` }); }));
   const critBlock = `<div class="stack" style="gap:6px"><div class="row between"><div class="label">Criterios de evaluación</div>${cal.curr ? `<button class="btn sm" data-a="calpick" data-tipo="ins">Elegir criterios</button>` : ''}</div>
-    ${!cal.curr ? '<p class="tiny muted" style="margin:0">Elige el currículo del grupo en Configuración para poder vincular criterios.</p>' : d.crit.length ? `<div class="stack" style="gap:4px">${d.crit.map(x => `<div class="row" style="flex-wrap:nowrap"><span class="tag">${esc(x.c)}</span><span class="small grow" style="min-width:0">${esc(critTexto(cal, x.c))}</span><input type="number" min="0" class="pct" value="${esc(String(x.p))}" data-f="inscp" data-c="${x.c}" data-calre="modal" aria-label="Peso de ${x.c}">%<button class="iconbtn" data-a="inscdel" data-c="${x.c}" aria-label="Quitar">✕</button></div>`).join('')}</div>${Math.abs(sumCr - 100) > .01 ? `<span class="tiny warnc">Suman ${nf(sumCr)} %: se reparte en proporción.</span>` : ''}` : `<p class="tiny muted" style="margin:0">Sin criterio: esta nota se repartirá entre los criterios en proporción${n?.crit?.length ? ` (o irá a los criterios por defecto de la categoría: ${n.crit.join(', ')})` : ''}.</p>`}</div>`;
+    ${!cal.curr ? '<p class="tiny muted" style="margin:0">Elige el currículo del grupo en Configuración para poder vincular criterios.</p>' : d.crit.length ? `<div class="stack" style="gap:4px">${d.crit.map(x => `<div class="row" style="flex-wrap:nowrap"><span class="tag">${esc(x.c)}</span><span class="small grow" style="min-width:0"${currLangAttr(currOf(cal))}>${esc(critTexto(cal, x.c))}</span><input type="number" min="0" class="pct" value="${esc(String(x.p))}" data-f="inscp" data-c="${x.c}" data-calre="modal" aria-label="Peso de ${x.c}">%<button class="iconbtn" data-a="inscdel" data-c="${x.c}" aria-label="Quitar">✕</button></div>`).join('')}</div>${Math.abs(sumCr - 100) > .01 ? `<span class="tiny warnc">Suman ${nf(sumCr)} %: se reparte en proporción.</span>` : ''}` : `<p class="tiny muted" style="margin:0">Sin criterio: esta nota se repartirá entre los criterios en proporción${n?.crit?.length ? ` (o irá a los criterios por defecto de la categoría: ${n.crit.join(', ')})` : ''}.</p>`}</div>`;
   const rubBlock = `<div class="stack" style="gap:10px"><div class="row between"><div class="label">Rúbrica · niveles por defecto 0–${cal.niveles.length - 1} = ${cal.niveles.map(v => nf(v, 2)).join(' / ')}</div>${rubOtros.length ? `<select data-f="inscopy" style="width:auto;max-width:260px"><option value="">Copiar rúbrica de…</option>${rubOtros.map(o => `<option value="${o.gid}|${o.id}">${esc(o.t)}</option>`).join('')}</select>` : ''}</div>
     ${d.items.map((it, k) => `<div class="rubedit"><div class="row" style="flex-wrap:nowrap"><span class="small muted">${k + 1}</span><input type="text" value="${esc(it.texto)}" placeholder="Qué se valora (p. ej. Conclusiones)" data-f="insit" data-id="${it.id}" data-k="texto" style="flex:1;min-width:0;font-weight:700"><input type="number" min="0" class="pct" value="${esc(String(it.peso))}" data-f="insit" data-id="${it.id}" data-k="peso" data-calre="modal" aria-label="Peso del ítem">%<button class="iconbtn" data-a="insitdel" data-id="${it.id}" aria-label="Quitar ítem">✕</button></div>
       <div class="row" style="margin:6px 0"><span class="tiny muted">Criterios:</span>${chipsCrit(it.crit)}${cal.curr ? `<button class="btn sm ghost" data-a="calpick" data-tipo="item" data-id="${it.id}">Elegir</button>` : ''}</div>
@@ -524,7 +527,7 @@ function fichaCal(aid) {
 function barrasCE(cal, x) {
   if (!cal.curr || !Object.keys(x.ce).length) return '';
   const C = currOf(cal);
-  return `<div><div class="label" style="margin:6px 0">Competencias específicas</div><div class="stack" style="gap:6px">${C.ce.filter(([n]) => x.ce[String(n)]).map(([n, t]) => { const o = x.ce[String(n)]; return `<div class="cebar"><span class="small"><b>CE${n}</b> <span class="muted">${esc(t)}</span></span><span class="bar"><span style="width:${Math.max(0, Math.min(100, o.g * 10))}%;${o.g < 5 ? 'background:var(--bad)' : ''}"></span></span><span class="small num"><b>${nf(o.g, 2)}</b> <span class="tiny muted">${nf(o.w * 100)} %</span></span></div>`; }).join('')}</div></div>`;
+  return `<div><div class="label" style="margin:6px 0">Competencias específicas</div><div class="stack" style="gap:6px">${C.ce.filter(([n]) => x.ce[String(n)]).map(([n, t]) => { const o = x.ce[String(n)]; return `<div class="cebar"><span class="small"><b>CE${n}</b> <span class="muted"${currLangAttr(C)} title="${esc(t)}">${esc(cortaTxt(t, 120))}</span></span><span class="bar"><span style="width:${Math.max(0, Math.min(100, o.g * 10))}%;${o.g < 5 ? 'background:var(--bad)' : ''}"></span></span><span class="small num"><b>${nf(o.g, 2)}</b> <span class="tiny muted">${nf(o.w * 100)} %</span></span></div>`; }).join('')}</div></div>`;
 }
 
 /* ---- plantillas y copias ---- */
@@ -772,9 +775,9 @@ A['delgrupo-ok'] = (orig => function () { const id = UI.grupoId; if (S.cal[id]) 
 /* ---- datos de ejemplo ---- */
 function ejemploCal(G) {
   const ev = evActual();
-  const CR = { eso1: { ex: [['8.1', 60], ['8.3', 40]], it: ['1.2', '1.4', '1.5', '3.3'] }, eso3: { ex: [['8.1', 50], ['9.5', 50]], it: ['1.4', '1.1', '1.2', '3.3'] }, bach2: { ex: [['6.1', 50], ['6.2', 50]], it: ['2.1', '1.1', '3.1', '1.2'] } };
+  const CR = { 'byg-1eso': { ex: [['8.1', 60], ['8.3', 40]], it: ['1.2', '1.4', '1.5', '3.3'] }, 'byg-3eso': { ex: [['8.1', 50], ['9.5', 50]], it: ['1.4', '1.1', '1.2', '3.3'] }, bach2: { ex: [['6.1', 50], ['6.2', 50]], it: ['2.1', '1.1', '3.1', '1.2'] } };
   G.forEach((g, gi) => {
-    const cal = calDe(g); const cr = CR[cal.curr]; if (!cr) return;
+    const cal = calDe(g); const cr = CR[currId(cal.curr)]; if (!cr) return;
     const nEx = cal.arbol[0], nTr = cal.arbol[1];
     const ex = { id: uid(), nombre: ['Examen UD 1', 'Examen UD 2', 'Examen bloque A'][gi], nodo: nEx.id, ev, fecha: '', modo: 'directa', peso: 1, crit: cr.ex.map(([c, p]) => ({ c, p })), items: [], notas: {}, rub: {}, ejemplo: true };
     const items = [['Planteamiento e hipótesis', 25], ['Procedimiento y datos', 25], ['Conclusiones', 30], ['Presentación y lenguaje científico', 20]].map(([t, p], k) => ({ id: uid(), texto: t, peso: p, crit: [cr.it[k]], desc: ['No lo presenta', 'No lo hace o casi nada', 'Lo hace con errores importantes', 'Lo hace bien con algún fallo', 'Lo hace muy bien y completo'], v2: true }));

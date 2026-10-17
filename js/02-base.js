@@ -66,20 +66,8 @@ const OTROS = { guardia: 'Guardia', ac: 'AC · Complementaria', at: 'AT · Atenc
 const OTROS_C = { guardia: 'Guardia', ac: 'AC', at: 'AT', ae: 'Atención educativa', reunion: 'Reunión' };
 const TIPOS_AG = { tarea:'Tarea', clase:'Para clase', examen:'Examen', entrega:'Entrega', reunion:'Reunión', otro:'Otro' };
 const TIPOS_IDEA = ['Actividad','Recurso','Anécdota','Dato curioso','Noticia','Pregunta','Experimento','Analogía','Error conceptual','Situación de aprendizaje','Salida','Otro'];
-const ASIGNATURAS = [
-  ['byg1eso', 'Biología y Geología · 1.º ESO', 'eso1', '1eso', '1.º ESO'],
-  ['byg3eso', 'Biología y Geología · 3.º ESO', 'eso3', '3eso', '3.º ESO'],
-  ['byg4eso', 'Biología y Geología · 4.º ESO', 'eso4', '4eso', '4.º ESO'],
-  ['bgca1', 'Biología, Geología y CC. Ambientales · 1.º Bach', 'bach1', '1bach', '1.º Bach'],
-  ['bhs1', 'Biología Humana y Salud · 1.º Bach', 'bhs1', 'bhs1', '1.º Bach'],
-  ['geo2', 'Geología y CC. Ambientales · 2.º Bach', 'bach2', '2bach', '2.º Bach'],
-  ['bio2', 'Biología · 2.º Bach', 'bio2', 'bio2', '2.º Bach'],
-  ['pdc1', 'PDC 1 · Diversificación (3.º ESO)', 'custom', '3eso', '3.º ESO'],
-  ['pdc2', 'PDC 2 · Diversificación (4.º ESO)', 'custom', '4eso', '4.º ESO'],
-  ['tutoria', 'Tutoría', '', 'none', '']];
-const ASIG = Object.fromEntries(ASIGNATURAS.map(([k, nombre, curr, banco, nivel]) => [k, { nombre, curr, banco, nivel }]));
+/* asignaturas (ASIG, asigSelect…): js/11-curriculo.js */
 const esTutoria = g => g?.asig === 'tutoria';
-const asigSelect = (val, attrs) => `<select ${attrs}><option value="">Elige la asignatura…</option>${ASIGNATURAS.map(([k, n]) => `<option value="${k}" ${val === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
 const APARTADOS = [['motivar', 'Cómo contarlo · enganchar'], ['consejos', 'Cómo contarlo · explicar'], ['actividades', 'Actividades'], ['recursos', 'Recursos']];
 const APT = Object.fromEntries(APARTADOS);
 /* sección de Preparar donde va cada apartado (consejos y motivar van juntos en «Cómo contarlo») */
