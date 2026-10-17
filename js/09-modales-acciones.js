@@ -53,7 +53,7 @@ function notaModal(a) { modal(`<h2>Nota sobre ${esc(a.nombre)}</h2><textarea id=
 function proyectar() {
   const key = UI.sesion; const { grupoId, fecha } = parseKey(key); const p = plan(key); const fechas = fechasGrupo(grupoId, fecha);
   const lg = idiomaG(grupoId); const T = L10N[lg];
-  const el = document.createElement('div'); el.className = 'projector'; el.lang = lg === 'va' ? 'ca-valencia' : 'es'; el.innerHTML = `<div class="row between"><span class="label">${esc(grupo(grupoId).nombre)} · ${cap(fLongL(fecha, lg))}</span><button class="btn" data-a="cerrarproy" lang="es">Cerrar</button></div>
+  const el = document.createElement('div'); el.className = 'projector'; el.lang = lg === 'va' ? 'ca-valencia' : 'es'; el.innerHTML = `<div class="row between"><span class="label">${esc(grupo(grupoId).nombre)} · ${cap(fLongL(fecha, lg))}</span><button class="btn" data-a="cerrarproy" lang="es" data-tr>Cerrar</button></div>
     <h1 style="margin-top:20px">${esc(p.titulo || T.hoy)}</h1>${(p.resumenInicio ?? resumenAnterior(key)?.txt) ? `<div class="label" style="font-size:1rem;margin-bottom:8px">${T.anterior}</div><div class="p-body" style="white-space:pre-wrap">${esc(p.resumenInicio ?? resumenAnterior(key)?.txt)}</div>` : ''}
     ${fechas.length ? `<div class="label" style="font-size:1rem;margin:30px 0 0">${T.fechas}</div><div class="p-dates" style="margin-top:10px">${fechas.map(a => `<div><b>${a.tipo === 'examen' ? '📝' : '📦'} ${esc(a.titulo)}</b> · ${cap(fLongL(a.fecha, lg))} <span class="muted">(${T.rel(diffDays(fecha, a.fecha))})</span></div>`).join('')}</div>` : ''}`;
   document.body.appendChild(el);
@@ -245,12 +245,13 @@ const A = {
     <label class="f">Asignatura (decide las competencias en Calificaciones y las ideas del banco)${asigSelect('', 'id="ng-a"')}</label>
     <div class="fgrid"><label class="f">Nombre de la materia<input type="text" id="ng-m" value="Biología y Geología"></label><label class="f">Nivel<input type="text" id="ng-v" placeholder="3.º ESO"></label></div>
     <div><div class="label" style="margin-bottom:6px">Idioma de la asignatura</div><div class="row"><label class="check"><input type="radio" name="ng-i" value="es" checked>Castellano</label><label class="check"><input type="radio" name="ng-i" value="va">Valenciano</label></div>
-    <p class="tiny muted" style="margin:4px 0 0">Los materiales para el alumnado se harán en este idioma; el menú sigue en castellano.</p></div>
+    <p class="tiny muted" style="margin:4px 0 0">Los materiales para el alumnado se harán en este idioma; el menú va en el idioma de la app (Ajustes).</p></div>
     <div class="row"><button class="btn primary" data-a="nuevogrupo-ok">Crear grupo</button><button class="btn" data-a="close">Cancelar</button></div></div>`); setTimeout(() => $('#ng-n')?.focus(), 30); },
   'nuevogrupo-ok'() { const n = $('#ng-n').value.trim(); if (!n) { $('#ng-n').focus(); return; }
     const asg = $('#ng-a').value; if (!asg) { toast('Elige la asignatura del grupo'); $('#ng-a').focus(); return; }
     const g = { id: uid(), nombre: n, materia: asg === 'tutoria' && $('#ng-m').value.trim() === 'Biología y Geología' ? 'Tutoría' : $('#ng-m').value.trim(), nivel: $('#ng-v').value.trim() || ASIG[asg]?.nivel || '', asig: asg, idioma: document.querySelector('input[name="ng-i"]:checked')?.value || 'es', color: (GCOLORS.find(([c]) => !S.grupos.some(x => x.color === c)) || GCOLORS[S.grupos.length % GCOLORS.length])[0], alumnos: [] };
     S.grupos.push(g); touch('grupos'); closeModal(); UI.view = 'grupo'; UI.grupoId = g.id; UI.grupoTab = 'alumnado'; toast('Grupo creado'); render(); },
+  idiomaapp(el) { const lg = el.dataset.v === 'va' ? 'va' : 'es'; S.config.idiomaApp = lg; touch('config'); UI.keepScroll = true; I18N.set(lg); },
   gidioma(el) { grupo(UI.grupoId).idioma = el.dataset.v; touch('grupos'); UI.keepScroll = true; render(); },
   alnumerar() { const g = grupo(UI.grupoId); const hay = g.alumnos.some(a => a.num); const go = () => { g.alumnos.forEach((a, i) => { a.num = i + 1; }); touch('grupos'); UI.keepScroll = true; render(); toast('Números de lista puestos'); };
     if (!hay) return go(); modal(`<h2>¿Volver a numerar?</h2><p>Se sustituyen los números de lista actuales por 1–${g.alumnos.length} en el orden en que aparecen ahora.</p><div class="row"><button class="btn primary" data-a="alnumerarok">Numerar</button><button class="btn" data-a="close">Cancelar</button></div>`); UI._numerar = go; },
@@ -363,7 +364,7 @@ document.addEventListener('change', async e => {
 
 
 /* ---------- registro de inicios de sesión ---------- */
-const fHoraR = t => { const d = new Date(t); return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); };
+const fHoraR = t => { const d = new Date(t); return d.toLocaleDateString(I18N.locale(), { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString(I18N.locale(), { hour: '2-digit', minute: '2-digit' }); };
 const lineaRegistro = e => `${fHoraR(e.t)} · ${e.texto}${e.motivo ? ' (' + e.motivo + ')' : ''}${e.seg !== undefined ? ' · ventana de Google ' + String(e.seg).replace('.', ',') + ' s' : ''}${e.seg > 6 ? ' · ¿pidió correo o contraseña?' : ''}${e.permiso ? ' · permiso ' + e.permiso : ''}${e.error ? ' · ' + e.error : ''}`;
 Object.assign(A, {
   async verregistro() {

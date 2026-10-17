@@ -10,7 +10,10 @@ main{max-width:720px;margin:0 auto;padding:32px 16px 64px}
 h1{font-size:1.6rem;margin:0 0 4px} h2{font-size:1.1rem;margin:28px 0 6px}
 p,li{color:var(--ink-2)} a{color:var(--accent)}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+[hidden]{display:none!important}
 </style></head><body><main>
+<p class="idiomas" style="text-align:right;margin:0 0 12px"><a href="?lang=es" data-l="es" lang="es">Castellano</a> · <a href="?lang=va" data-l="va" lang="ca-ES-valencia">Valencià</a></p>
+<div id="p-es" lang="es">
 <h1>Privacidad de BIOSOFÍA</h1>
 <p>Última actualización: octubre de 2026.</p>
 
@@ -44,6 +47,57 @@ p,li{color:var(--ink-2)} a{color:var(--accent)}
 <p>Los datos del alumnado son responsabilidad del centro. Antes de usar la app con datos reales, consulta al equipo directivo o a la persona delegada de protección de datos.</p>
 
 <h2>Contacto</h2>
-<p><!-- Cambia esta línea por tu correo de contacto antes de publicar --><span id="contacto">[correo de contacto]</span></p>
+<p><!-- Cambia esta línea por tu correo de contacto antes de publicar --><span class="contacto" id="contacto">[correo de contacto]</span></p>
 <p><a href="./">Volver a BIOSOFÍA</a></p>
+</div>
+<div id="p-va" lang="ca-ES-valencia" hidden>
+<h1>Privacitat de BIOSOFÍA</h1>
+<p>Última actualització: octubre de 2026.</p>
+
+<div class="box"><p style="margin:0"><b>En resum:</b> BIOSOFÍA no té servidor propi ni base de dades. Tot el que escrius es guarda en el teu dispositiu i en una carpeta del teu propi Google Drive o OneDrive. Ningú més, tampoc qui publica l'app, pot veure les teues dades.</p></div>
+
+<h2>Quines dades tracta l'app</h2>
+<ul>
+<li>Les que introduïx el docent: horari, grups, alumnat, sessions, registres de classe, qualificacions, agenda, idees, materials i llibres.</li>
+<li>Del teu compte de Google o Microsoft, només l'identificador, el nom i el correu, per a saber en quina carpeta guardar i mostrar qui ha entrat.</li>
+</ul>
+
+<h2>On es guarden</h2>
+<ul>
+<li><b>En el dispositiu</b> (emmagatzematge del navegador), per a poder treballar sense connexió.</li>
+<li><b>Google Drive</b>: en la carpeta «BIOSOFÍA» de la teua unitat. L'app usa el permís <i>drive.file</i>, que només li deixa veure i modificar els arxius que ella mateixa ha creat; no pot llegir la resta del teu Drive.</li>
+<li><b>OneDrive</b>: en la carpeta «Aplicacions/BIOSOFÍA». L'app usa el permís <i>Files.ReadWrite.AppFolder</i>, limitat a eixa carpeta.</li>
+<li>Amb un compte que no siga corporatiu, les dades de l'alumnat es queden per defecte només en el dispositiu. Es pot canviar en Ajustos.</li>
+</ul>
+
+<h2>Amb qui es compartixen</h2>
+<p>Amb ningú. L'app no envia dades a tercers, no usa analítica, publicitat ni intel·ligència artificial, i no carrega recursos d'altres llocs (les fonts de lletra van incloses en la mateixa app). La web només conté arxius estàtics allotjats en GitHub Pages, que no reben les teues dades. La comunicació és directa entre el teu navegador i Google o Microsoft. L'ús de la informació rebuda de les API de Google s'ajusta a la <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Política de dades d'usuari dels serveis d'API de Google</a>, inclosos els requisits d'ús limitat.</p>
+
+<h2>Com esborrar-les</h2>
+<ul>
+<li>«Tancar la sessió en este dispositiu» esborra la còpia local.</li>
+<li>Ajustos → «Esborrar totes les dades» esborra també les del núvol. També pots esborrar la carpeta directament en el teu Drive o OneDrive.</li>
+<li>Pots retirar el permís de l'app en <a href="https://myaccount.google.com/connections" rel="noopener">el teu compte de Google</a> o en <a href="https://myapps.microsoft.com" rel="noopener">les teues aplicacions de Microsoft</a>.</li>
+</ul>
+
+<h2>Dades de l'alumnat</h2>
+<p>Les dades de l'alumnat són responsabilitat del centre. Abans d'usar l'app amb dades reals, consulta l'equip directiu o la persona delegada de protecció de dades.</p>
+
+<h2>Contacte</h2>
+<p><span class="contacto">[correo de contacto]</span></p>
+<p><a href="./">Tornar a BIOSOFÍA</a></p>
+</div>
+<script>
+/* idioma: ?lang=va|es, si no el de la app (Ajustes) */
+(function () {
+  var q = (location.search.match(/lang=(es|va)/) || [])[1], lg = q;
+  if (!lg) { try { lg = localStorage.getItem('bs:idioma') === 'va' ? 'va' : 'es'; } catch (e) { lg = 'es'; } }
+  var va = lg === 'va';
+  document.getElementById('p-va').hidden = !va; document.getElementById('p-es').hidden = va;
+  document.documentElement.lang = va ? 'ca-ES-valencia' : 'es';
+  document.title = va ? 'Privacitat · Biosofía' : 'Privacidad · Biosofía';
+  /* el correo de contacto se escribe una vez (en la versión en castellano) y se copia a la otra */
+  var c = document.getElementById('contacto'); document.querySelectorAll('.contacto').forEach(function (x) { x.innerHTML = c.innerHTML; });
+})();
+</script>
 </main></body></html>

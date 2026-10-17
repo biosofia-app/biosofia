@@ -524,12 +524,14 @@
           ${sinG || sinM ? `<p class="ne-nota">${sinG && sinM ? 'Falta configurar los inicios de sesión' : sinG ? 'Falta configurar el inicio con Google' : 'Falta configurar el inicio con Microsoft'} (archivo <b>config.js</b>, ver LEEME).</p>` : ''}
           <button class="ne-link" data-p="local">Usar sin cuenta, solo en este dispositivo</button>
           <p class="ne-nota">Con cuenta corporativa (@edu.gva.es) se guarda todo en la nube. Con cuenta personal, los datos del alumnado (grupos, registros, calificaciones) se quedan en este dispositivo; se puede cambiar en Ajustes. <a href="privacidad.html" target="_blank" rel="noopener">Privacidad</a></p>
+          <button class="ne-link" data-p="idioma" translate="no" style="margin-top:4px">${typeof I18N !== 'undefined' && I18N.lang === 'va' ? 'Castellano' : 'Valencià'}</button>
         </div>`;
         document.body.appendChild(el);
         el.addEventListener('click', async e => {
           const b = e.target.closest('[data-p]'); if (!b || b.disabled) return;
           const err = el.querySelector('#ne-err'); err.textContent = '';
           const p = b.dataset.p;
+          if (p === 'idioma') { I18N.set(I18N.lang === 'va' ? 'es' : 'va'); b.textContent = I18N.lang === 'va' ? 'Castellano' : 'Valencià'; return; }
           try {
             if (p === 'local') { el.remove(); return resolve({ prov: 'local', sub: 'local', email: '', nombre: 'Este dispositivo' }); }
             if (p === 'ms') { b.disabled = true; await MS.entrar(); return; }
@@ -576,7 +578,7 @@
         const ab = cont.querySelector('.nc-menu'); if (ab) { ab.remove(); btn.setAttribute('aria-expanded', 'false'); return; }
         const m = document.createElement('div'); m.className = 'nc-menu'; btn.setAttribute('aria-expanded', 'true');
         const local = s.prov === 'local'; const n = local ? 0 : await Sync.pendientes();
-        const ult = Sync.ultimo ? new Date(Sync.ultimo).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'todavía no';
+        const ult = Sync.ultimo ? new Date(Sync.ultimo).toLocaleString(I18N.locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'todavía no';
         m.innerHTML = local
           ? `<div class="nc-q">Sin cuenta</div><div class="nc-s">Los datos están solo en este navegador. Exporta copias desde Ajustes.</div>
              <button data-m="entrar">Entrar con Google o Microsoft…</button>`

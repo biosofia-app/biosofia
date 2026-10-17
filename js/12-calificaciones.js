@@ -545,7 +545,7 @@ function xlsxDe(hojas) {
     const rows = h.filas.map((fila, r) => `<row r="${r + 1}">${fila.map((c, k) => {
       if (c === null || c === undefined || c === '') return ''; const o = typeof c === 'object' ? c : { v: c }; const ref = colL(k) + (r + 1);
       const st = o.s ?? (typeof o.v === 'number' ? 2 : 0);
-      return typeof o.v === 'number' && Number.isFinite(o.v) ? `<c r="${ref}" s="${st}"><v>${Math.round(o.v * 10000) / 10000}</v></c>` : `<c r="${ref}" t="inlineStr" s="${st}"><is><t xml:space="preserve">${xmlE(o.v)}</t></is></c>`;
+      return typeof o.v === 'number' && Number.isFinite(o.v) ? `<c r="${ref}" s="${st}"><v>${Math.round(o.v * 10000) / 10000}</v></c>` : `<c r="${ref}" t="inlineStr" s="${st}"><is><t xml:space="preserve">${xmlE(I18N.t(String(o.v)))}</t></is></c>`;
     }).join('')}</row>`).join('');
     const fx = h.fijar || { c: 1, r: 1 };
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane xSplit="${fx.c}" ySplit="${fx.r}" topLeftCell="${colL(fx.c)}${fx.r + 1}" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>`
@@ -564,7 +564,7 @@ function xlsxDe(hojas) {
 }
 const nCell = v => v === null || v === undefined || Number.isNaN(v) ? null : { v, s: v < 5 ? 3 : 2 };
 const bCell = v => v === null || v === undefined ? null : { v, s: v < 5 ? 5 : 4 };
-const nombreHoja = (t, usados) => { let b = String(t).replace(/[\[\]:*?\/\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Hoja'; let n = b, k = 2; while (usados.has(n.toLowerCase())) { const suf = ' (' + k++ + ')'; n = b.slice(0, 31 - suf.length) + suf; } usados.add(n.toLowerCase()); return n; };
+const nombreHoja = (t, usados) => { let b = String(I18N.t(String(t))).replace(/[\[\]:*?\/\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Hoja'; let n = b, k = 2; while (usados.has(n.toLowerCase())) { const suf = ' (' + k++ + ')'; n = b.slice(0, 31 - suf.length) + suf; } usados.add(n.toLowerCase()); return n; };
 const evCorto = t => { const m = /^\s*(\d+\s*\.?\s*[ªº]?)/.exec(t || ''); return m ? m[1].replace(/\s+/g, '') + ' ev.' : (t || 'Ev.'); };
 const alCols = a => [a.apellidos || '', a.pila || (a.apellidos ? '' : a.nombre)];
 function hojasGrupo(g, cal, comp, usados) {
@@ -622,7 +622,7 @@ async function exportarXls() {
     hojas.push(...hojasGrupo(g, cal, comp, usados));
     if (guardar) touchCal(g.id); else if (antes) cal.redondeo = antes; else delete cal.redondeo; });
   const bytes = xlsxDe(hojas); closeModal(); calRe();
-  const fn = `Notas ${x.todos ? 'todos los grupos' : GS[0].nombre} ${todayStr()}.xlsx`.replace(/[\\/:*?"<>|]/g, '-');
+  const fn = `${I18N.t('Notas')} ${x.todos ? I18N.t('todos los grupos') : GS[0].nombre} ${todayStr()}.xlsx`.replace(/[\\/:*?"<>|]/g, '-');
   try { await Nube.descargas.save({ filename: fn, data: new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }) }); toast('Excel descargado'); } catch (e) { toast('No se ha podido crear el Excel'); }
 }
 Object.assign(A, {

@@ -23,16 +23,23 @@ const todayStr = () => ymd(new Date());
 const nowMin = () => { const d = new Date(); return d.getHours()*60 + d.getMinutes(); };
 const tmin = t => { if (!t) return 0; const [h,m] = t.split(':').map(Number); return h*60 + m; };
 const tHM = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
-const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-const DIAS_C = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-const fLong = s => { const d = parseD(s); return `${DIAS[dow(s)].toLowerCase()}, ${d.getDate()} de ${MESES[d.getMonth()]}`; };
+/* nombres de días y meses en el idioma de la app (Ajustes › Idioma); se cambian en el sitio con idiomaFechas() */
+const FECHAS_L = {
+  es: { dias: ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'], diasC: ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+        meses: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'] },
+  va: { dias: ['', 'Dilluns', 'Dimarts', 'Dimecres', 'Dijous', 'Divendres', 'Dissabte', 'Diumenge'], diasC: ['', 'Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'],
+        meses: ['gener','febrer','març','abril','maig','juny','juliol','agost','setembre','octubre','novembre','desembre'] } };
+const DIAS = [...FECHAS_L.es.dias], DIAS_C = [...FECHAS_L.es.diasC], MESES = [...FECHAS_L.es.meses];
+const appLg = () => (typeof I18N !== 'undefined' && I18N.lang === 'va') ? 'va' : 'es';
+function idiomaFechas() { const F = FECHAS_L[appLg()]; DIAS.splice(0, 8, ...F.dias); DIAS_C.splice(0, 8, ...F.diasC); MESES.splice(0, 12, ...F.meses); }
+idiomaFechas();
+const fLong = s => fLongL(s, appLg());
 const fShort = s => { const d = parseD(s); return `${DIAS_C[dow(s)]} ${d.getDate()}/${d.getMonth()+1}`; };
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-/* Idioma del material para el alumnado (el menú de la app siempre en castellano) */
+/* Idioma del material para el alumnado (cada grupo el suyo; el menú va en el idioma de la app) */
 const IDIOMAS = { es: 'Castellano', va: 'Valenciano' };
 const L10N = {
-  es: { dias: DIAS, meses: MESES, anterior: 'En la sesión anterior', hoy: 'Hoy', pend: 'Nos quedó por ver: ', fechas: 'Próximas fechas',
+  es: { dias: FECHAS_L.es.dias, meses: FECHAS_L.es.meses, anterior: 'En la sesión anterior', hoy: 'Hoy', pend: 'Nos quedó por ver: ', fechas: 'Próximas fechas',
         rel: n => n === 0 ? 'hoy' : n === 1 ? 'mañana' : n > 0 ? `en ${n} días` : `hace ${-n} días`, de: m => 'de ' },
   va: { dias: ['', 'Dilluns', 'Dimarts', 'Dimecres', 'Dijous', 'Divendres', 'Dissabte', 'Diumenge'], meses: ['gener','febrer','març','abril','maig','juny','juliol','agost','setembre','octubre','novembre','desembre'],
         anterior: 'En la sessió anterior', hoy: 'Hui', pend: 'Ens va quedar per veure: ', fechas: 'Pròximes dates',
@@ -40,7 +47,8 @@ const L10N = {
 };
 const idiomaG = gid => (grupo(gid)?.idioma) || 'es';
 const fLongL = (s, lg) => { const T = L10N[lg] || L10N.es; const d = parseD(s); const m = T.meses[d.getMonth()]; return `${T.dias[dow(s)].toLowerCase()}, ${d.getDate()} ${T.de(m)}${m}`; };
-const rel = n => n === 0 ? 'hoy' : n === 1 ? 'mañana' : n === -1 ? 'ayer' : n > 0 ? `en ${n} días` : `hace ${-n} días`;
+const rel = n => appLg() === 'va' ? (n === 0 ? 'hui' : n === 1 ? 'demà' : n === -1 ? 'ahir' : n > 0 ? `d'ací a ${n} dies` : `fa ${-n} dies`)
+  : n === 0 ? 'hoy' : n === 1 ? 'mañana' : n === -1 ? 'ayer' : n > 0 ? `en ${n} días` : `hace ${-n} días`;
 const words = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const GCOLORS = [['g1','Malaquita'],['g2','Lapislázuli'],['g3','Ocre'],['g4','Amatista'],['g5','Hematites'],['g6','Olivino'],['g7','Rodocrosita'],['g8','Turquesa'],['g9','Grafito']];
 const TAGS = ['TDAH','TEA','Dislexia','Altas capacidades','ACIS','PT','Nivel adaptado','Nouvingut','Repetidor'];
@@ -200,7 +208,7 @@ function allDocIds() {
 const Deshacer = { base: new Map(), pila: [], pend: new Set(), timer: null, accion: null, n: 0, restaurando: false, msg: null, archPend: [] };
 const DH_MAX = 20, DH_ARCH_MS = 10 * 60 * 1000;
 /* clics que no se ofrecen para deshacer: navegación y operaciones que ya piden confirmación y sustituyen todo */
-const DH_NO = new Set(['borrar-ok', 'imp-ok', 'ejemplo', 'quitarejemplo']);
+const DH_NO = new Set(['borrar-ok', 'imp-ok', 'ejemplo', 'quitarejemplo', 'idiomaapp']);
 /* texto del aviso cuando la acción no muestra el suyo */
 const DH_TXT = { tapal: 'Anotado', 'delgrupo-ok': 'Grupo borrado', delidea: 'Idea borrada', delag: 'Tarea borrada', delitem: 'Borrado', delev: 'Borrado',
   additem: 'Añadido', addev: 'Añadido', usaridea: 'Idea añadida', usarsug: 'Idea añadida', bancoadd: 'Añadido a la sesión', desfijar: 'Idea quitada', quitarsug: 'Quitado' };

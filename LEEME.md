@@ -38,6 +38,8 @@ Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (l
 
 | Archivo | Qué hay | Mira aquí si falla… |
 |---|---|---|
+| `00-va.js` | Diccionario **castellano → valenciano** de la interfaz (solo datos). Para corregir una traducción, cambia el texto de la derecha | Una palabra mal traducida |
+| `00-idioma.js` | **Idioma de la app**: traduce al valenciano lo que se pinta en pantalla (y los avisos del navegador) si se elige en *Ajustes › Idioma de la app*. Va en el `<head>`, antes que `nube.js` | Textos que no cambian de idioma |
 | `01-banco-ideas.js` | Banco de la app: 95 temas con ideas (solo datos) | Las sugerencias de «Sugerir» |
 | `02-base.js` | Utilidades, idioma del grupo, guardado (Store), estado, **Deshacer**, calendario, avisos de Hoy, barra del móvil y `render()` | Que no se guarde, Deshacer, fechas y festivos, que no se pinte nada |
 | `03-hoy.js` | Pantalla **Hoy**: avisos, tareas, línea del día | Hoy |
@@ -72,6 +74,14 @@ Los scripts de `js/` son **scripts normales** que se cargan **en este orden** (l
 - No cambies el orden de los `<script>`.
 
 ---
+
+## Idioma de la app (castellano / valenciano)
+
+- Se elige en **Ajustes › Idioma de la app** (y en la pantalla de entrada). Se guarda en el dispositivo y en la cuenta, así que vale en todos los dispositivos.
+- El código sigue escrito en castellano. `00-idioma.js` traduce **lo que se ve** al pintarse, con el diccionario de `00-va.js`: textos exactos y patrones con huecos (`"{0} sesiones sin planificar": "{0} sessions sense planificar"`). Los datos del docente no se tocan.
+- **No se traduce**: lo que escribe el docente en los campos, el contenido del libro (va en el idioma del libro) ni lo que se proyecta o se prepara para el alumnado (va en el idioma del grupo). Esas zonas llevan el atributo `lang`; un botón de la app dentro de ellas lleva `data-tr`.
+- **Un texto nuevo** en el código: añade su traducción en `00-va.js` (si no, se verá en castellano). En la consola, con la app en valenciano, `I18N.pendientes()` lista lo que hay en pantalla sin traducir.
+- Fechas, días y meses salen ya en el idioma de la app (`02-base.js`). Word y Excel usan `I18N.t()`.
 
 ## Puesta en marcha (unos 30 minutos, una sola vez)
 

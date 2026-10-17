@@ -89,7 +89,7 @@ function famModal() {
     <div class="row" style="margin:10px 0">${evs.map(e => `<button class="btn sm ${F.ev === e.id ? 'primary' : ''}" data-a="famev" data-v="${e.id}">${esc(e.nombre)}</button>`).join('')}<button class="btn sm ${F.ev === 'curso' ? 'primary' : ''}" data-a="famev" data-v="curso">Todo el curso</button>
       <span class="small muted">Idioma: ${lg === 'va' ? 'valenciano' : 'castellano'} (el del grupo)</span></div>
     <div class="fam-cols"><div class="stack" style="gap:8px">${bloques}<div class="row"><button class="btn sm ghost" data-a="famfrases">Editar mis frases</button><button class="btn sm ghost" data-a="famrehacer">Volver a generar</button></div>${editor}</div>
-    <div><div class="label" style="margin-bottom:6px">Vista previa</div><div class="print-area fam-print"><div class="fam-doc" id="fam-prev">
+    <div><div class="label" style="margin-bottom:6px">Vista previa</div><div class="print-area fam-print"><div class="fam-doc" id="fam-prev" lang="${lg === 'va' ? 'ca-ES-valencia' : 'es'}">
 ${famPrevia()}</div></div>
       <div class="row" style="margin-top:10px"><button class="btn primary" data-a="famimprimir">Imprimir o guardar PDF</button><button class="btn" data-a="famcopiar">Copiar el texto</button></div></div></div>`, 'fam-modal');
 }

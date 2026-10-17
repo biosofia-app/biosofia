@@ -13,7 +13,7 @@ VIEWS.agenda = () => {
     <div class="small muted">${fShort(a.fecha)} · ${rel(diffDays(hoy, a.fecha))}${a.hora ? ' · ' + esc(a.hora) : ''}${a.grupoId ? ' · ' + esc(grupo(a.grupoId)?.nombre || '') : ''}${a.tipo !== 'tarea' ? ' · ' + TIPOS_AG[a.tipo] : ''}</div></button></div>`;
   return `<div class="page-head"><div><div class="label">Agenda</div><h1>${cap(MESES[m.getMonth()])} ${m.getFullYear()}</h1><div class="sub">Pulsa un día para apuntar algo. Los avisos salen en «Hoy» el día antes y el mismo día.</div></div>
     <div class="row"><button class="btn sm" data-a="agnav" data-d="-1" aria-label="Mes anterior">‹</button><button class="btn sm" data-a="agnav" data-d="0">Hoy</button><button class="btn sm" data-a="agnav" data-d="1" aria-label="Mes siguiente">›</button></div></div>
-  <div class="cols"><div><div class="cal">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(x => `<div class="ch">${x}</div>`).join('')}${cells.map(x => {
+  <div class="cols"><div><div class="cal">${(appLg() === 'va' ? ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'] : ['L', 'M', 'X', 'J', 'V', 'S', 'D']).map(x => `<div class="ch">${x}</div>`).join('')}${cells.map(x => {
       const l = byDay[x] || []; const fest = dow(x) <= 5 && festivoDe(x) && !['Antes del inicio de curso', 'Fuera del curso'].includes(festivoDe(x)) ? festivoDe(x) : null;
       return `<button class="cday ${parseD(x).getMonth() !== m.getMonth() ? 'out' : ''} ${dow(x) > 5 ? 'we' : ''} ${fest ? 'fest' : ''} ${x === hoy ? 'today' : ''}" data-a="agday" data-d="${x}" aria-label="${fLong(x)}${l.length ? ', ' + l.length + ' anotaciones' : ''}">
         <span class="n"><span>${parseD(x).getDate()}</span><span class="add">+</span></span>${fest ? `<span class="chip" style="background:none;color:var(--muted)">${esc(fest)}</span>` : ''}
@@ -84,10 +84,15 @@ function avisoFestivo(e) {
   return `<div class="small muted" style="margin:-4px 0 4px">✓ Sin clase ${dias.length === 1 ? 'el ' + fShort(dias[0]) : dias.length ? `${dias.length} días lectivos: ${fShort(dias[0])} a ${fShort(dias[dias.length - 1])}` : '(cae en fin de semana)'}</div>`;
 }
 /* ===== AJUSTES ===== */
+/* idioma de la app: los nombres de cada idioma van en su propio idioma (translate="no") */
+const panelIdiomaApp = () => `<div class="panel stack"><h2>Idioma de la app</h2>
+    <div class="seg" translate="no" role="group" aria-label="Idioma"><button data-a="idiomaapp" data-v="es" aria-pressed="${appLg() === 'es'}" lang="es">Castellano</button><button data-a="idiomaapp" data-v="va" aria-pressed="${appLg() === 'va'}" lang="ca-ES-valencia">Valencià</button></div>
+    <p class="tiny muted" style="margin:0">Cambia los menús, botones y avisos al momento, en todos tus dispositivos. Tus textos (sesiones, notas, ideas) no se traducen. Lo que se proyecta o se prepara para el alumnado sigue en el idioma de cada grupo (Grupos › Datos del grupo).</p></div>`;
 VIEWS.ajustes = () => {
   const c = S.config; const frs = franjasOrd(); const P = c.pesos;
   return `<div class="page-head"><div><div class="label">Ajustes</div><h1>Mi curso</h1><div class="sub">Fechas, horario y ponderaciones. Al cambiar de instituto, empieza un curso nuevo aquí.</div></div></div>
   <div class="stack">
+  ${panelIdiomaApp()}
   <div class="panel stack"><h2>Curso</h2><div class="fgrid"><label class="f">Nombre<input type="text" value="${esc(c.curso)}" data-f="cfg" data-k="curso" placeholder="2026-27 · IES …"></label>
     <label class="f">Inicio de las clases<input type="date" value="${esc(c.inicio)}" data-f="cfg" data-k="inicio"></label><label class="f">Fin de las clases<input type="date" value="${esc(c.fin)}" data-f="cfg" data-k="fin"></label></div>
     <div class="label">Evaluaciones</div>${c.evaluaciones.map(e => `<div class="row"><input type="text" value="${esc(e.nombre)}" data-f="cfglist" data-list="evaluaciones" data-id="${e.id}" data-k="nombre" style="flex:1;min-width:140px"><label class="f" style="flex-direction:row;align-items:center">Termina<input type="date" value="${esc(e.fin)}" data-f="cfglist" data-list="evaluaciones" data-id="${e.id}" data-k="fin"></label><button class="iconbtn" data-a="cfgdel" data-list="evaluaciones" data-id="${e.id}" aria-label="Quitar">✕</button></div>`).join('')}

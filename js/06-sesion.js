@@ -188,7 +188,7 @@ function docxDe(titulo, secciones, opt = {}) {
   const run = (s, b, size) => `<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>${b ? '<w:b/>' : ''}<w:sz w:val="${size || sz}"/></w:rPr><w:t xml:space="preserve">${X(s)}</w:t></w:r>`;
   const par = (inner, after = 120, before = 0) => `<w:p><w:pPr><w:spacing w:before="${before}" w:after="${after}" w:line="${line}" w:lineRule="auto"/></w:pPr>${inner}</w:p>`;
   let body = '';
-  if (opt.cabecera) body += par(run('Nombre: ______________________________   Grupo: ________   Fecha: ____________', false, 20), 240);
+  if (opt.cabecera) body += par(run(opt.lg === 'va' ? 'Nom: ______________________________   Grup: ________   Data: ____________' : 'Nombre: ______________________________   Grupo: ________   Fecha: ____________', false, 20), 240);
   body += par(run(titulo, true, 32), 200);
   secciones.forEach(([sub, txt]) => {
     if (sub) body += par(run(sub, true, 26), 120, 240);
@@ -207,10 +207,10 @@ function docxDe(titulo, secciones, opt = {}) {
 }
 async function descargarWord(res, cual) {
   const nombre = (res.titulo || 'actividad').replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0, 60) || 'actividad';
-  let bytes, fn;
-  if (cual === 'adaptada') { bytes = docxDe(res.titulo, [[null, res.adaptada]], { cabecera: true, grande: res.adaptTipo !== 'nivel' }); fn = nombre + ' (adaptada).docx'; }
-  else if (cual === 'profe') { bytes = docxDe(res.titulo + ' · Solucionario', [['Solucionario', res.solucion || ''], ...((res.rubrica || '').trim() ? [['Rúbrica de corrección', res.rubrica]] : [])]); fn = nombre + ' (solucionario).docx'; }
-  else { bytes = docxDe(res.titulo, [[null, res.enunciado]], { cabecera: true }); fn = nombre + '.docx'; }
+  let bytes, fn; const lg = UI.sesion ? idiomaG(parseKey(UI.sesion).grupoId) : 'es'; const t = I18N.t;
+  if (cual === 'adaptada') { bytes = docxDe(res.titulo, [[null, res.adaptada]], { cabecera: true, lg, grande: res.adaptTipo !== 'nivel' }); fn = nombre + ` (${t('adaptada')}).docx`; }
+  else if (cual === 'profe') { bytes = docxDe(res.titulo + ' · ' + t('Solucionario'), [[t('Solucionario'), res.solucion || ''], ...((res.rubrica || '').trim() ? [[t('Rúbrica de corrección'), res.rubrica]] : [])]); fn = nombre + ` (${t('solucionario')}).docx`; }
+  else { bytes = docxDe(res.titulo, [[null, res.enunciado]], { cabecera: true, lg }); fn = nombre + '.docx'; }
   let dl = null; try { dl = Nube.descargas; } catch (e) {}
   if (!dl) { toast('Aquí no se pueden descargar archivos'); return; }
   try { await dl.save({ filename: fn, data: bytes }); toast('Word guardado'); } catch (e) { if (e?.code !== 'declined') toast('No se ha podido guardar el Word'); }

@@ -17,6 +17,8 @@ function apsLista(b) { const out = []; (b?.unidades || []).forEach((u, ui) => u.
 const numAp = (ui, ai) => `${ui + 1}.${ai + 1}`;
 function numsUnidad(u) { const m = new Map(); let n = 0; u.apartados.forEach(a => a.bloques.forEach(x => { if (x.t === 'actividad') m.set(x.id, ++n); })); return m; }
 const libL = b => LIB_L[b?.idioma === 'va' ? 'va' : 'es'];
+/* el contenido del libro va en su idioma: no lo traduce el idioma de la app */
+const libLang = b => b?.idioma === 'va' ? 'ca-ES-valencia' : 'es';
 /* texto con formato sencillo: **negrita**, *cursiva*, «- » lista, «1. » lista numerada */
 function mdInline(s) { return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>'); }
 function mdLineas(txt, onPara, onItem) {
@@ -32,16 +34,16 @@ function mdHTML(txt) { let out = ''; mdLineas(txt, p => { out += `<p>${p.map(mdI
 const imgSrc = x => x.assetId ? '_blob/' + x.assetId : (x.url || '');
 function bloqueVista(b, x, ctx) {
   const L = libL(b);
-  if (x.t === 'sub') return `<h3 class="lb-sub">${esc(x.txt || '')}</h3>`;
-  if (x.t === 'texto') return `<div class="lb-txt">${mdHTML(x.txt)}</div>`;
-  if (x.t === 'concepto') return `<div class="lb-box lb-concepto"><div class="lb-lab">★ ${esc(x.titulo || L.concepto)}</div>${mdHTML(x.txt)}</div>`;
-  if (x.t === 'caja') { const e = CAJAS[x.estilo] ? x.estilo : 'sabias'; return `<div class="lb-box lb-${e}"><div class="lb-lab">${CAJAS[e][0]} ${esc(x.titulo || L[e])}</div>${mdHTML(x.txt)}</div>`; }
-  if (x.t === 'imagen') { const src = imgSrc(x); return src ? `<figure class="lb-fig" style="max-width:${Number(x.ancho) || 100}%"><img src="${esc(src)}" alt="${esc(x.pie || '')}">${x.pie ? `<figcaption>${esc(x.pie)}</figcaption>` : ''}</figure>` : (ctx.edit ? '<p class="empty">Imagen sin elegir.</p>' : ''); }
+  if (x.t === 'sub') return `<h3 class="lb-sub" lang="${libLang(b)}">${esc(x.txt || '')}</h3>`;
+  if (x.t === 'texto') return `<div class="lb-txt" lang="${libLang(b)}">${mdHTML(x.txt)}</div>`;
+  if (x.t === 'concepto') return `<div class="lb-box lb-concepto" lang="${libLang(b)}"><div class="lb-lab">★ ${esc(x.titulo || L.concepto)}</div>${mdHTML(x.txt)}</div>`;
+  if (x.t === 'caja') { const e = CAJAS[x.estilo] ? x.estilo : 'sabias'; return `<div class="lb-box lb-${e}" lang="${libLang(b)}"><div class="lb-lab">${CAJAS[e][0]} ${esc(x.titulo || L[e])}</div>${mdHTML(x.txt)}</div>`; }
+  if (x.t === 'imagen') { const src = imgSrc(x); return src ? `<figure class="lb-fig" lang="${libLang(b)}" style="max-width:${Number(x.ancho) || 100}%"><img src="${esc(src)}" alt="${esc(x.pie || '')}">${x.pie ? `<figcaption>${esc(x.pie)}</figcaption>` : ''}</figure>` : (ctx.edit ? '<p class="empty">Imagen sin elegir.</p>' : ''); }
   if (x.t === 'actividad' || x.t === 'pregunta') {
     const act = x.t === 'actividad'; const resp = act ? x.sol : x.resp;
     const lab = act ? `${L.act} ${ctx.nums?.get(x.id) || ''}`.trim() : L.preg;
     const sol = (resp || '').trim() ? (ctx.sols === 'show' ? `<div class="lb-sol"><b>${act ? L.sol : L.resp}:</b>${mdHTML(resp)}</div>` : ctx.sols === 'reveal' ? `<details class="lb-rev"><summary>${act ? L.versol : L.ver}</summary><div class="lb-sol">${mdHTML(resp)}</div></details>` : '') : '';
-    return `<div class="lb-box lb-${x.t}"><div class="lb-lab">${act ? '✎' : '?'} ${esc(lab)}</div>${mdHTML(x.txt)}${sol}</div>`;
+    return `<div class="lb-box lb-${x.t}" lang="${libLang(b)}"><div class="lb-lab">${act ? '✎' : '?'} ${esc(lab)}</div>${mdHTML(x.txt)}${sol}</div>`;
   }
   if (x.t === 'salto') return ctx.edit ? `<div class="lb-salto">salto de ${x.modo === 'pagina' ? 'página (solo PDF)' : x.modo === 'pantalla' ? 'pantalla (solo al presentar)' : 'pantalla y de página'}</div>` : '';
   return '';
@@ -69,9 +71,9 @@ function presRender() {
   let el = document.querySelector('.projector.pres'); if (!el) { el = document.createElement('div'); el.className = 'projector pres'; document.body.appendChild(el); }
   el.lang = b.idioma === 'va' ? 'ca-valencia' : 'es';
   const fin = P.k === L.length - 1 && P.s === scr.length - 1, ini = P.k === 0 && P.s === 0;
-  el.innerHTML = `<div class="row between"><span class="label">${esc(b.titulo)} · ${esc(libL(b).ud)} ${o.ui + 1} · ${esc(o.u.titulo)}</span><button class="btn" data-a="cerrarproy" lang="es">Cerrar</button></div>
+  el.innerHTML = `<div class="row between"><span class="label">${esc(b.titulo)} · ${esc(libL(b).ud)} ${o.ui + 1} · ${esc(o.u.titulo)}</span><button class="btn" data-a="cerrarproy" lang="es" data-tr>Cerrar</button></div>
     <div class="pres-body"><h1>${esc(sc.titulo)}</h1>${sc.sub ? `<h2 class="lb-sub">${esc(sc.sub)}</h2>` : ''}<div class="lb lb-big">${sc.items.map(x => bloqueVista(b, x, ctx)).join('')}</div></div>
-    <div class="row between pres-nav" lang="es"><button class="btn" data-a="presnav" data-d="-1" ${ini ? 'disabled' : ''}>‹ Anterior</button><span class="small muted">${P.s + 1} / ${scr.length} · apartado ${numAp(o.ui, o.ai)}</span><button class="btn primary" data-a="presnav" data-d="1" ${fin ? 'disabled' : ''}>${P.s === scr.length - 1 && !fin ? 'Siguiente apartado ›' : 'Siguiente ›'}</button></div>`;
+    <div class="row between pres-nav" lang="es" data-tr><button class="btn" data-a="presnav" data-d="-1" ${ini ? 'disabled' : ''}>‹ Anterior</button><span class="small muted">${P.s + 1} / ${scr.length} · apartado ${numAp(o.ui, o.ai)}</span><button class="btn primary" data-a="presnav" data-d="1" ${fin ? 'disabled' : ''}>${P.s === scr.length - 1 && !fin ? 'Siguiente apartado ›' : 'Siguiente ›'}</button></div>`;
   el.querySelector('.pres-body').scrollTop = 0;
 }
 function presNav(d) {

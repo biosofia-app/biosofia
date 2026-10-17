@@ -128,9 +128,9 @@ Object.assign(A, {
   progunidad(el) { progUnidadModal(el.dataset.u); },
   progimprimir() { imprimirZona('prog'); },
   async progword() {
-    const g = grupo(UI.progG); const D = progDatos(g); const secs = progSecciones(g, D);
-    const bytes = docxDe(`Programación didáctica · ${progAsigNombre(g)}${S.config.curso ? ' · ' + S.config.curso : ''}`, secs);
-    const fn = `Programación ${progAsigNombre(g)}`.replace(/[^\p{L}\p{N} ._·-]/gu, '').replace(/·/g, '-').trim().slice(0, 80) + '.docx';
+    const g = grupo(UI.progG); const D = progDatos(g); const secs = progSecciones(g, D).map(([t, x]) => [I18N.t(t), I18N.t(x)]);
+    const bytes = docxDe(`${I18N.t('Programación didáctica')} · ${progAsigNombre(g)}${S.config.curso ? ' · ' + S.config.curso : ''}`, secs);
+    const fn = `${I18N.t('Programación')} ${progAsigNombre(g)}`.replace(/[^\p{L}\p{N} ._·-]/gu, '').replace(/·/g, '-').trim().slice(0, 80) + '.docx';
     let dl = null; try { dl = Nube.descargas; } catch (e) {}
     if (!dl) { toast('Aquí no se pueden descargar archivos'); return; }
     try { await dl.save({ filename: fn, data: bytes }); toast('Word guardado'); } catch (e) { if (e?.code !== 'declined') toast('No se ha podido guardar el Word'); }

@@ -13,7 +13,7 @@ VIEWS.plan = () => {
     body = `<div class="row" style="margin-bottom:10px"><button class="btn sm" data-a="plantillas">📋 Plantillas de planificación</button><label class="check small"><input type="checkbox" data-f="qotros" ${UI.qOtros ? 'checked' : ''}>Mostrar también guardias, AE y otras horas</label><span class="small muted">Escribe directamente el título de cada sesión; se guarda solo.</span></div>
     <div class="stack" style="gap:18px">${semanas.map(w => `<div class="wk-wrap"><table class="qp"><tr><th></th>${gs.map(g => `<th><span class="gchip"><span class="sw" style="background:var(--${g.color || 'g1'})"></span>${esc(g.nombre)}</span></th>`).join('')}${otrosTipos.map(t => `<th>${esc(OTROS_C[t])}</th>`).join('')}</tr>
       ${[0, 1, 2, 3, 4].map(i => { const x = addDays(w, i); const fest = festivoDe(x); const fuera = parseD(x).getMonth() !== mes;
-        const dl = `<td class="qd ${x === hoy ? 'today' : ''}">${'LMXJV'[i]} ${parseD(x).getDate()}</td>`;
+        const dl = `<td class="qd ${x === hoy ? 'today' : ''}">${(appLg() === 'va' ? ['Dl', 'Dt', 'Dc', 'Dj', 'Dv'] : 'LMXJV')[i]} ${parseD(x).getDate()}</td>`;
         if (fest) return `<tr class="${fuera ? 'qout' : ''}">${dl}<td class="qfest" colspan="${gs.length + otrosTipos.length}">${esc(fest)}</td></tr>`;
         const ses = sesionesDia(x);
         return `<tr class="${fuera ? 'qout' : ''}">${dl}${gs.map(g => { const mis = ses.filter(o => o.grupo.id === g.id);
